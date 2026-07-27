@@ -32,22 +32,29 @@ ORM:
 
 ## Diagrama Entidade-Relacionamento (DER)
 
-```text
 Users
 │
 ├── Addresses
 │
 ├── Cart
 │     └── CartItems
+│             │
+│             ▼
+│      ProductVariants
 │
 └── Orders
       └── OrderItems
+              │
+              ▼
+       ProductVariants
 
 Categories
 │
 └── Products
-      └── ProductImages
-```
+      │
+      ├── ProductImages
+      │
+      └── ProductVariants
 
 ---
 
