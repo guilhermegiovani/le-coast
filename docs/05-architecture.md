@@ -9,10 +9,9 @@ O sistema será desenvolvido utilizando uma arquitetura de **Monólito Modular**
 ## Arquitetura Geral
 
 ```text
-Cliente
-   │
-   ▼
-Frontend (Next.js)
+Clients
+├── Web (Next.js)
+└── Mobile (React Native)
    │
    ▼
 API REST (Node.js + Express)
