@@ -28,7 +28,7 @@ Aceita
 
 ### Decisão
 
-Utilizar Next.js.
+Utilizar Next.js com App Router.
 
 ### Justificativa
 
@@ -108,8 +108,8 @@ Aceita
 
 ### Decisão
 
-Frontend na Vercel, Backend no Railway (provisório) e banco no Neon PostgreSQL.
+Hospedar o Frontend na Vercel. O provedor do Backend será definido durante a implementação. O banco de dados será o Neon PostgreSQL.
 
 ### Justificativa
 
-Facilidade de integração, baixo custo para o MVP e boa experiência de desenvolvimento.
+A Vercel oferece excelente integração com Next.js e o Neon fornece uma solução PostgreSQL gerenciada adequada para o projeto.

@@ -11,6 +11,7 @@
 - Node.js
 - Express
 - TypeScript
+- Zod
 
 ## Banco de Dados
 
@@ -23,6 +24,8 @@
 ## Autenticação
 
 - JWT + Refresh Token
+
+---
 
 ## Testes
 
@@ -55,7 +58,7 @@
 
 ### Backend
 
-- Railway (provisório)
+- Em definição
 
 ### Banco
 
