@@ -201,6 +201,12 @@ Exemplo:
 @/components/ui/button
 ```
 
+Sempre utilizar:
+
+- import type para tipos do TypeScript.
+- Alias (@/) para imports internos.
+- Não importar React quando não for necessário.
+
 ---
 
 # Código
@@ -337,6 +343,14 @@ Apenas escreva ao final:
 Nada mais.
 
 ---
+
+Organizar os imports na seguinte ordem:
+
+1. React / Next
+2. Bibliotecas externas
+3. Imports internos
+
+--
 
 # Regra mais importante
 
