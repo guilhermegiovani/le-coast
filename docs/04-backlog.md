@@ -92,13 +92,13 @@ Criar a base visual pública da loja e os componentes globais reutilizáveis.
 - [x] BK023 - Criar Footer
 - [x] BK024 - Integrar componentes ao RootLayout
 - [ ] BK025 - Implementar navegação mobile
-- [ ] BK026 - Criar seção Hero da Home
-- [ ] BK027 - Criar seção de categorias em destaque
-- [ ] BK028 - Criar seção de produtos em destaque
-- [ ] BK029 - Criar seção institucional da Home
-- [ ] BK030 - Criar newsletter
+- [~] BK026 - Criar seção Hero da Home
+- [~] BK027 - Criar seção de categorias em destaque
+- [~] BK028 - Criar seção de produtos em destaque
+- [~] BK029 - Criar seção institucional da Home
+- [~] BK030 - Criar newsletter
 - [ ] BK031 - Criar skip link de acessibilidade
-- [ ] BK032 - Validar responsividade do layout global
+- [x] BK032 - Validar responsividade do layout global
 - [x] TEST-001 - Criar testes unitários dos componentes globais
 - [ ] TEST-002 - Criar teste de integração do RootLayout
 - [ ] A11Y-001 - Validar acessibilidade básica do layout global
