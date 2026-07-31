@@ -2,33 +2,17 @@ import Link from 'next/link';
 
 import { Container } from '@/components/layout/container';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { getProductPrice, PRODUCTS } from '@/data/products';
 
-const featuredProducts = [
-  {
-    href: '/products/1',
-    id: 1,
-    name: 'Top Essential',
-    price: 'R$ 89,90',
-  },
-  {
-    href: '/products/2',
-    id: 2,
-    name: 'Legging Move',
-    price: 'R$ 149,90',
-  },
-  {
-    href: '/products/3',
-    id: 3,
-    name: 'Maiô Coast',
-    price: 'R$ 179,90',
-  },
-  {
-    href: '/products/4',
-    id: 4,
-    name: 'Biquíni Sunset',
-    price: 'R$ 139,90',
-  },
-];
+// Seleciona apenas os produtos marcados para aparecer na vitrine da Home.
+const featuredProducts = PRODUCTS.filter(
+  (product) => product.featured,
+);
+
+const priceFormatter = new Intl.NumberFormat('pt-BR', {
+  currency: 'BRL',
+  style: 'currency',
+});
 
 export function FeaturedProducts() {
   return (
@@ -57,10 +41,11 @@ export function FeaturedProducts() {
           {featuredProducts.map((product) => (
             <li key={product.id}>
               <Link
-                href={product.href}
+                href={`/products/${product.slug}`}
                 className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 <Card className="overflow-hidden transition-all duration-200 hover:ring-1 hover:ring-primary">
+                  {/* Espaço temporário para a imagem do produto. */}
                   <div
                     aria-hidden="true"
                     className="h-40 w-full bg-muted"
@@ -70,7 +55,9 @@ export function FeaturedProducts() {
                     <CardTitle>{product.name}</CardTitle>
 
                     <p className="mt-2 text-sm text-foreground">
-                      {product.price}
+                      {priceFormatter.format(
+                        getProductPrice(product),
+                      )}
                     </p>
                   </CardContent>
                 </Card>

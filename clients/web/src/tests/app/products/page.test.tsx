@@ -22,7 +22,7 @@ describe('ProductsPage', () => {
     render(<ProductsPage />);
 
     expect(
-      screen.getByText('8 produtos encontrados'),
+      screen.getByText('4 produtos encontrados'),
     ).toBeInTheDocument();
   });
 
@@ -38,14 +38,14 @@ describe('ProductsPage', () => {
   });
 
   // Garante que todos os produtos mockados são exibidos.
-  it('deve renderizar os oito produtos', () => {
+  it('deve renderizar os quatro produtos', () => {
     render(<ProductsPage />);
 
     expect(
       screen.getAllByRole('heading', {
         level: 3,
       }),
-    ).toHaveLength(8);
+    ).toHaveLength(4);
   });
 
   // Garante que um produto importante da lista aponta para seu destino.

@@ -3,84 +3,102 @@ import { describe, expect, it } from 'vitest';
 
 import { FeaturedProducts } from '@/components/home/featured-products';
 
-// Representa os produtos que esperamos encontrar no componente.
-// Esses dados serão reutilizados nos testes com it.each.
+// Representa os produtos marcados como destaque na fonte centralizada.
 const FEATURED_PRODUCTS = [
   {
-    href: '/products/1',
+    href: '/products/top-essential',
     name: 'Top Essential',
     price: 'R$ 89,90',
   },
   {
-    href: '/products/2',
+    href: '/products/legging-move',
     name: 'Legging Move',
     price: 'R$ 149,90',
   },
   {
-    href: '/products/3',
+    href: '/products/maio-coast',
     name: 'Maiô Coast',
     price: 'R$ 179,90',
   },
   {
-    href: '/products/4',
+    href: '/products/biquini-sunset',
     name: 'Biquíni Sunset',
     price: 'R$ 139,90',
   },
-] as const;
+];
 
-// Agrupa todos os testes relacionados ao componente FeaturedProducts.
+// Agrupa os testes das responsabilidades do componente FeaturedProducts.
 describe('FeaturedProducts', () => {
-  // Renderiza o componente e verifica se o título da seção aparece como um h2.
-  it('deve renderizar o heading da seção', () => {
+  // Garante que o título da seção é renderizado como heading de nível 2.
+  it('deve renderizar o título da seção', () => {
     render(<FeaturedProducts />);
 
-    const heading = screen.getByRole('heading', {
-      name: 'Produtos em destaque',
-      level: 2,
-    });
-
-    expect(heading).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        name: 'Produtos em destaque',
+        level: 2,
+      }),
+    ).toBeInTheDocument();
   });
 
-  // Verifica se o link "Ver todos" existe e aponta para a página de produtos.
-  it('deve renderizar o link Ver todos com o destino correto', () => {
+  // Garante que o link para a listagem completa de produtos está disponível.
+  it('deve renderizar o link Ver todos', () => {
     render(<FeaturedProducts />);
 
-    const link = screen.getByRole('link', {
-      name: 'Ver todos',
-    });
-
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/products');
+    expect(
+      screen.getByRole('link', {
+        name: 'Ver todos',
+      }),
+    ).toHaveAttribute('href', '/products');
   });
 
-  // Executa o mesmo teste para cada produto do array FEATURED_PRODUCTS.
-  // Verifica se cada card é um link e se aponta para a página correta.
+  // Garante que todos os produtos destacados são exibidos na Home.
+  it('deve renderizar os quatro produtos em destaque', () => {
+    render(<FeaturedProducts />);
+
+    expect(
+      screen.getAllByRole('heading', {
+        level: 3,
+      }),
+    ).toHaveLength(4);
+  });
+
+  // Garante que cada produto exibe seu nome.
   it.each(FEATURED_PRODUCTS)(
-    'deve renderizar o link do produto $name com o destino correto',
-    ({ href, name }) => {
+    'deve renderizar o produto "$name"',
+    ({ name }) => {
       render(<FeaturedProducts />);
 
-      // O nome acessível do link contém o nome e o preço do produto.
-      // Por isso usamos RegExp para procurar apenas pelo nome.
-      const link = screen.getByRole('link', {
-        name: new RegExp(name, 'i'),
-      });
-
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute('href', href);
+      expect(
+        screen.getByRole('heading', {
+          name,
+          level: 3,
+        }),
+      ).toBeInTheDocument();
     },
   );
 
-  // Executa o mesmo teste para cada produto e verifica se seu preço é exibido.
+  // Garante que cada card aponta para a página correta de detalhes.
   it.each(FEATURED_PRODUCTS)(
-    'deve renderizar o preço do produto $name',
+    'deve renderizar o link correto para "$name"',
+    ({ href, name }) => {
+      render(<FeaturedProducts />);
+
+      expect(
+        screen.getByRole('link', {
+          name: new RegExp(name, 'i'),
+        }),
+      ).toHaveAttribute('href', href);
+    },
+  );
+
+  // Garante que os preços vindos das variantes são formatados em reais.
+  it.each(FEATURED_PRODUCTS)(
+    'deve renderizar o preço de "$name"',
     ({ price }) => {
       render(<FeaturedProducts />);
 
-      const productPrice = screen.getByText(price);
-
-      expect(productPrice).toBeInTheDocument();
+      expect(screen.getByText(price)).toBeInTheDocument();
     },
   );
 });

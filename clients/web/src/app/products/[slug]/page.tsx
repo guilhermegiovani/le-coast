@@ -3,6 +3,10 @@ import { notFound } from 'next/navigation';
 import { Container } from '@/components/layout/container';
 import { ProductGallery } from '@/components/products/product-gallery';
 import { ProductInfo } from '@/components/products/product-info';
+import {
+  getProductBySlug,
+  getProductPrice,
+} from '@/data/products';
 
 type ProductDetailsPageProps = {
   params: Promise<{
@@ -10,46 +14,38 @@ type ProductDetailsPageProps = {
   }>;
 };
 
-// Produtos temporários usados até conectarmos a página ao banco de dados.
-const PRODUCTS = [
-  {
-    description:
-      'Top fitness com sustentação, tecido confortável e modelagem pensada para acompanhar seus movimentos.',
-    name: 'Top Essential',
-    price: 89.9,
-    slug: 'top-essential',
-  },
-  {
-    description:
-      'Legging de cintura alta, ajuste confortável e tecido flexível para treinos e uso diário.',
-    name: 'Legging Move',
-    price: 149.9,
-    slug: 'legging-move',
-  },
-  {
-    description:
-      'Maiô com modelagem elegante, confortável e ideal para praia ou piscina.',
-    name: 'Maiô Coast',
-    price: 179.9,
-    slug: 'maio-coast',
-  },
-];
-
-// Busca um produto pelo slug recebido na URL.
-function getProductBySlug(slug: string) {
-  return PRODUCTS.find((product) => product.slug === slug);
-}
-
 export default async function ProductDetailsPage({
   params,
 }: ProductDetailsPageProps) {
   const { slug } = await params;
+
+  // Busca o produto na fonte centralizada de dados.
   const product = getProductBySlug(slug);
 
   // Exibe a página padrão de não encontrado quando o produto não existe.
   if (!product) {
     notFound();
   }
+
+  // Remove tamanhos repetidos entre as variantes do produto.
+  const sizes = Array.from(
+    new Map(
+      product.variants.map((variant) => [
+        variant.size.id,
+        variant.size,
+      ]),
+    ).values(),
+  );
+
+  // Remove cores repetidas entre as variantes do produto.
+  const colors = Array.from(
+    new Map(
+      product.variants.map((variant) => [
+        variant.color.id,
+        variant.color,
+      ]),
+    ).values(),
+  );
 
   return (
     <main className="py-10 md:py-14">
@@ -58,9 +54,11 @@ export default async function ProductDetailsPage({
           <ProductGallery productName={product.name} />
 
           <ProductInfo
+            colors={colors}
             description={product.description}
             name={product.name}
-            price={product.price}
+            price={getProductPrice(product)}
+            sizes={sizes}
           />
         </div>
       </Container>

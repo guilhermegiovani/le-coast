@@ -1,9 +1,15 @@
 import { Button } from '@/components/ui/button';
+import type {
+  ProductColor,
+  ProductSize,
+} from '@/types/product';
 
 type ProductInfoProps = {
+  colors: ProductColor[];
   description: string;
   name: string;
   price: number;
+  sizes: ProductSize[];
 };
 
 // Formata o preço no padrão monetário brasileiro.
@@ -13,9 +19,11 @@ const priceFormatter = new Intl.NumberFormat('pt-BR', {
 });
 
 export function ProductInfo({
+  colors,
   description,
   name,
   price,
+  sizes,
 }: ProductInfoProps) {
   return (
     <section
@@ -39,22 +47,43 @@ export function ProductInfo({
         </p>
       </div>
 
-      {/* As opções reais serão conectadas às variações do produto futuramente. */}
+      {/* Exibe os tamanhos disponíveis entre as variantes do produto. */}
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium text-foreground">
           Tamanho
         </p>
 
         <div className="flex flex-wrap gap-2">
-          {['P', 'M', 'G'].map((size) => (
+          {sizes.map((size) => (
             <Button
-              key={size}
+              key={size.id}
               type="button"
               variant="outline"
               size="sm"
-              aria-label={`Selecionar tamanho ${size}`}
+              aria-label={`Selecionar tamanho ${size.name}`}
             >
-              {size}
+              {size.name}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Exibe as cores disponíveis entre as variantes do produto. */}
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium text-foreground">
+          Cor
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          {colors.map((color) => (
+            <Button
+              key={color.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label={`Selecionar cor ${color.name}`}
+            >
+              {color.name}
             </Button>
           ))}
         </div>
