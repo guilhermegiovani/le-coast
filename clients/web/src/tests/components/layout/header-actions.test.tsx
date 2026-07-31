@@ -1,10 +1,28 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { HeaderActions } from '@/components/layout/header-actions';
 
+// Representa as ações disponíveis no cabeçalho.
+const HEADER_ACTIONS = [
+  {
+    href: '/search',
+    label: 'Buscar',
+  },
+  {
+    href: '/account',
+    label: 'Conta',
+  },
+  {
+    href: '/cart',
+    label: 'Carrinho',
+  },
+];
+
+// Agrupa os testes das responsabilidades do componente HeaderActions.
 describe('HeaderActions', () => {
-  it('deve renderizar a navegação de ações do cabeçalho', () => {
+  // Garante que o componente utiliza o nome acessível padrão.
+  it('deve renderizar a navegação com o nome acessível padrão', () => {
     render(<HeaderActions />);
 
     expect(
@@ -14,20 +32,43 @@ describe('HeaderActions', () => {
     ).toBeInTheDocument();
   });
 
-  it('deve renderizar os links com os destinos corretos', () => {
-    render(<HeaderActions />);
+  // Garante que o componente aceita um nome acessível personalizado.
+  it('deve renderizar a navegação com um nome acessível personalizado', () => {
+    render(<HeaderActions ariaLabel="Ações do menu mobile" />);
 
-    const links = [
-      ['Buscar', '/search'],
-      ['Conta', '/account'],
-      ['Carrinho', '/cart'],
-    ] as const;
+    expect(
+      screen.getByRole('navigation', {
+        name: 'Ações do menu mobile',
+      }),
+    ).toBeInTheDocument();
+  });
 
-    links.forEach(([name, href]) => {
-      expect(screen.getByRole('link', { name })).toHaveAttribute(
-        'href',
-        href,
-      );
-    });
+  // Garante que todas as ações direcionam para a página correta.
+  it.each(HEADER_ACTIONS)(
+    'deve renderizar o link "$label" com o destino correto',
+    ({ href, label }) => {
+      render(<HeaderActions />);
+
+      expect(
+        screen.getByRole('link', {
+          name: label,
+        }),
+      ).toHaveAttribute('href', href);
+    },
+  );
+
+  // Garante que o componente informa quando uma ação é selecionada.
+  it('deve executar onNavigate ao clicar em um link', () => {
+    const onNavigate = vi.fn();
+
+    render(<HeaderActions onNavigate={onNavigate} />);
+
+    fireEvent.click(
+      screen.getByRole('link', {
+        name: 'Buscar',
+      }),
+    );
+
+    expect(onNavigate).toHaveBeenCalledTimes(1);
   });
 });

@@ -30,6 +30,9 @@ export const buttonVariants = cva(
                 sm: 'h-9 px-4 text-sm',
                 md: 'h-10 px-5 text-sm',
                 lg: 'h-11 px-6 text-base',
+                
+                // Cria um botão quadrado para ações representadas apenas por ícones.
+                icon: 'size-10 p-0',
             },
         },
 
