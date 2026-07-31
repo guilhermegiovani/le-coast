@@ -1,4 +1,9 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+import { cn } from '@/lib/utils';
 
 type NavigationProps = {
   ariaLabel?: string;
@@ -31,6 +36,9 @@ export function Navigation({
   direction = 'horizontal',
   onNavigate,
 }: NavigationProps) {
+  // Obtém o caminho atual para identificar qual link está ativo.
+  const pathname = usePathname() ?? '/';
+
   // Define a disposição dos links conforme o contexto em que a navegação é usada.
   const listClasses =
     direction === 'vertical'
@@ -40,17 +48,31 @@ export function Navigation({
   return (
     <nav aria-label={ariaLabel}>
       <ul className={listClasses}>
-        {NAVIGATION_LINKS.map(({ href, label }) => (
-          <li key={href}>
-            <Link
-              href={href}
-              className="text-foreground transition-colors duration-200 hover:text-primary"
-              onClick={onNavigate}
-            >
-              {label}
-            </Link>
-          </li>
-        ))}
+        {NAVIGATION_LINKS.map(({ href, label }) => {
+          // A Home só fica ativa na rota exata "/".
+          // As demais continuam ativas em páginas filhas, como "/products/top-essential".
+          const isActive =
+            href === '/'
+              ? pathname === href
+              : pathname === href || pathname.startsWith(`${href}/`);
+
+          return (
+            <li key={href}>
+              <Link
+                href={href}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'border-b-2 border-transparent text-foreground transition-colors duration-200 hover:text-primary',
+                  isActive &&
+                    'border-primary font-semibold text-primary',
+                )}
+                onClick={onNavigate}
+              >
+                {label}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );

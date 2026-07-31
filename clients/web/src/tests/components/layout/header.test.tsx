@@ -1,7 +1,24 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { Header } from '@/components/layout/header';
+
+const mockedUsePathname = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockedUsePathname(),
+}));
 
 // Representa os links que devem existir no menu mobile.
 const MOBILE_NAVIGATION_LINKS = [
@@ -41,6 +58,11 @@ const MOBILE_ACTIONS = [
 
 // Agrupa os testes das responsabilidades do componente Header.
 describe('Header', () => {
+  // Define a Home como rota atual antes de cada teste.
+  beforeEach(() => {
+    mockedUsePathname.mockReturnValue('/');
+  });
+
   // Garante que o Header utiliza o elemento semântico adequado.
   it('deve renderizar o elemento semântico banner', () => {
     render(<Header />);
