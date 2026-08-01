@@ -91,7 +91,7 @@ Criar a base visual pública da loja e os componentes globais reutilizáveis.
 - [x] BK022 - Criar Header
 - [x] BK023 - Criar Footer
 - [x] BK024 - Integrar componentes ao RootLayout
-- [~] BK025 - Implementar navegação mobile
+- [x] BK025 - Implementar navegação mobile
 - [x] BK026 - Criar seção Hero da Home
 - [x] BK027 - Criar seção de categorias em destaque
 - [x] BK028 - Criar seção de produtos em destaque

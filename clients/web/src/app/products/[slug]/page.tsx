@@ -3,10 +3,7 @@ import { notFound } from 'next/navigation';
 import { Container } from '@/components/layout/container';
 import { ProductGallery } from '@/components/products/product-gallery';
 import { ProductInfo } from '@/components/products/product-info';
-import {
-  getProductBySlug,
-  getProductPrice,
-} from '@/data/products';
+import { getProductBySlug } from '@/data/products';
 
 type ProductDetailsPageProps = {
   params: Promise<{
@@ -27,26 +24,6 @@ export default async function ProductDetailsPage({
     notFound();
   }
 
-  // Remove tamanhos repetidos entre as variantes do produto.
-  const sizes = Array.from(
-    new Map(
-      product.variants.map((variant) => [
-        variant.size.id,
-        variant.size,
-      ]),
-    ).values(),
-  );
-
-  // Remove cores repetidas entre as variantes do produto.
-  const colors = Array.from(
-    new Map(
-      product.variants.map((variant) => [
-        variant.color.id,
-        variant.color,
-      ]),
-    ).values(),
-  );
-
   return (
     <main className="py-10 md:py-14">
       <Container>
@@ -54,11 +31,9 @@ export default async function ProductDetailsPage({
           <ProductGallery productName={product.name} />
 
           <ProductInfo
-            colors={colors}
             description={product.description}
             name={product.name}
-            price={getProductPrice(product)}
-            sizes={sizes}
+            variants={product.variants}
           />
         </div>
       </Container>

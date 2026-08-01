@@ -114,8 +114,8 @@ describe('ProductDetailsPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  // Garante que a ação principal aparece na página.
-  it('deve renderizar o botão Adicionar ao carrinho', async () => {
+  // Garante que a ação principal aparece habilitada para a variante inicial.
+  it('deve renderizar o botão Adicionar ao carrinho habilitado', async () => {
     const page = await ProductDetailsPage({
       params: Promise.resolve({
         slug: 'top-essential',
@@ -128,7 +128,7 @@ describe('ProductDetailsPage', () => {
       screen.getByRole('button', {
         name: 'Adicionar ao carrinho',
       }),
-    ).toBeInTheDocument();
+    ).toBeEnabled();
   });
 
   // Garante que uma rota inválida aciona a página de não encontrado.
@@ -144,5 +144,20 @@ describe('ProductDetailsPage', () => {
     ).rejects.toThrow('NEXT_NOT_FOUND');
 
     expect(mockedNotFound).toHaveBeenCalledTimes(1);
+  });
+
+  // Garante que o estoque da primeira variante é exibido.
+  it('deve renderizar o estoque da variante inicial', async () => {
+    const page = await ProductDetailsPage({
+      params: Promise.resolve({
+        slug: 'top-essential',
+      }),
+    });
+
+    render(page);
+
+    expect(
+      screen.getByText('8 unidades disponíveis'),
+    ).toBeInTheDocument();
   });
 });
