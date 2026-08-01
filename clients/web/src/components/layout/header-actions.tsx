@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Search,
   ShoppingCart,
@@ -5,6 +7,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useCartStore } from '@/stores/cart-store';
 
 type HeaderAction = {
   href: string;
@@ -50,6 +53,12 @@ export function HeaderActions({
       ? 'flex flex-col gap-3'
       : 'flex items-center gap-4';
 
+  const items = useCartStore((state) => state.items);
+
+  const totalItems = items.reduce(
+    (total, item) => total + item.quantity,
+    0,
+  );
   return (
     <nav aria-label={ariaLabel}>
       <ul className={listClasses}>
@@ -57,7 +66,7 @@ export function HeaderActions({
           <li key={href}>
             <Link
               href={href}
-              className="flex items-center gap-3 text-foreground transition-colors duration-200 hover:text-primary"
+              className="flex items-center gap-2 text-foreground transition-colors duration-200 hover:text-primary"
               onClick={onNavigate}
             >
               {showLabels && (
@@ -65,6 +74,15 @@ export function HeaderActions({
               )}
 
               <span>{label}</span>
+
+              {label === 'Carrinho' && totalItems > 0 && (
+                <span
+                  aria-label={`${totalItems} itens no carrinho`}
+                  className="flex size-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white"
+                >
+                  {totalItems}
+                </span>
+              )}
             </Link>
           </li>
         ))}

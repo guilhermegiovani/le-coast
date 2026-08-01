@@ -33,6 +33,8 @@ export default async function ProductDetailsPage({
           <ProductInfo
             description={product.description}
             name={product.name}
+            productId={product.id}
+            productSlug={product.slug}
             variants={product.variants}
           />
         </div>

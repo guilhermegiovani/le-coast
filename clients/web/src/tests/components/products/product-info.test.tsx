@@ -1,7 +1,30 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { ProductInfo } from '@/components/products/product-info';
+
+// Cria o mock antes do carregamento dos módulos feito pelo Vitest.
+const { addItemMock } = vi.hoisted(() => ({
+  addItemMock: vi.fn(),
+}));
+
+// Simula apenas a ação da store utilizada pelo ProductInfo.
+vi.mock('@/stores/cart-store', () => ({
+  useCartStore: (
+    selector: (state: {
+      addItem: typeof addItemMock;
+    }) => unknown,
+  ) =>
+    selector({
+      addItem: addItemMock,
+    }),
+}));
 
 const VARIANTS = [
   {
@@ -54,17 +77,29 @@ const VARIANTS = [
   },
 ];
 
+// Evita repetir as mesmas propriedades em todos os testes.
+function renderProductInfo() {
+  render(
+    <ProductInfo
+      description="Top fitness com sustentação e tecido confortável."
+      name="Top Essential"
+      productId={1}
+      productSlug="top-essential"
+      variants={VARIANTS}
+    />,
+  );
+}
+
 // Agrupa os testes das responsabilidades do componente ProductInfo.
 describe('ProductInfo', () => {
+  // Limpa as chamadas da store antes de cada teste.
+  beforeEach(() => {
+    addItemMock.mockClear();
+  });
+
   // Garante que o nome do produto é exibido como título principal.
   it('deve renderizar o nome do produto como h1', () => {
-    render(
-      <ProductInfo
-        description="Top fitness com sustentação e tecido confortável."
-        name="Top Essential"
-        variants={VARIANTS}
-      />,
-    );
+    renderProductInfo();
 
     expect(
       screen.getByRole('heading', {
@@ -76,26 +111,14 @@ describe('ProductInfo', () => {
 
   // Garante que o preço inicial vem da primeira variante.
   it('deve renderizar o preço da variante inicial', () => {
-    render(
-      <ProductInfo
-        description="Top fitness com sustentação e tecido confortável."
-        name="Top Essential"
-        variants={VARIANTS}
-      />,
-    );
+    renderProductInfo();
 
     expect(screen.getByText('R$ 89,90')).toBeInTheDocument();
   });
 
   // Garante que a descrição recebida é exibida para o usuário.
   it('deve renderizar a descrição do produto', () => {
-    render(
-      <ProductInfo
-        description="Top fitness com sustentação e tecido confortável."
-        name="Top Essential"
-        variants={VARIANTS}
-      />,
-    );
+    renderProductInfo();
 
     expect(
       screen.getByText(
@@ -108,13 +131,7 @@ describe('ProductInfo', () => {
   it.each(['P', 'M'])(
     'deve renderizar a opção de tamanho %s',
     (size) => {
-      render(
-        <ProductInfo
-          description="Top fitness com sustentação e tecido confortável."
-          name="Top Essential"
-          variants={VARIANTS}
-        />,
-      );
+      renderProductInfo();
 
       expect(
         screen.getByRole('button', {
@@ -128,13 +145,7 @@ describe('ProductInfo', () => {
   it.each(['Preto', 'Rosa'])(
     'deve renderizar a opção de cor %s',
     (color) => {
-      render(
-        <ProductInfo
-          description="Top fitness com sustentação e tecido confortável."
-          name="Top Essential"
-          variants={VARIANTS}
-        />,
-      );
+      renderProductInfo();
 
       expect(
         screen.getByRole('button', {
@@ -146,13 +157,7 @@ describe('ProductInfo', () => {
 
   // Garante que a primeira variante começa selecionada.
   it('deve iniciar com a primeira cor e o primeiro tamanho selecionados', () => {
-    render(
-      <ProductInfo
-        description="Top fitness com sustentação e tecido confortável."
-        name="Top Essential"
-        variants={VARIANTS}
-      />,
-    );
+    renderProductInfo();
 
     expect(
       screen.getByRole('button', {
@@ -169,13 +174,7 @@ describe('ProductInfo', () => {
 
   // Garante que selecionar outro tamanho atualiza a variante exibida.
   it('deve atualizar preço e estoque ao selecionar outro tamanho', () => {
-    render(
-      <ProductInfo
-        description="Top fitness com sustentação e tecido confortável."
-        name="Top Essential"
-        variants={VARIANTS}
-      />,
-    );
+    renderProductInfo();
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -184,6 +183,7 @@ describe('ProductInfo', () => {
     );
 
     expect(screen.getByText('R$ 99,90')).toBeInTheDocument();
+
     expect(
       screen.getByText('12 unidades disponíveis'),
     ).toBeInTheDocument();
@@ -191,13 +191,7 @@ describe('ProductInfo', () => {
 
   // Garante que selecionar outra cor mantém uma combinação válida.
   it('deve selecionar uma variante válida ao trocar a cor', () => {
-    render(
-      <ProductInfo
-        description="Top fitness com sustentação e tecido confortável."
-        name="Top Essential"
-        variants={VARIANTS}
-      />,
-    );
+    renderProductInfo();
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -228,13 +222,7 @@ describe('ProductInfo', () => {
 
   // Garante que tamanhos inexistentes para a cor atual ficam indisponíveis.
   it('deve desabilitar tamanhos inexistentes para a cor selecionada', () => {
-    render(
-      <ProductInfo
-        description="Top fitness com sustentação e tecido confortável."
-        name="Top Essential"
-        variants={VARIANTS}
-      />,
-    );
+    renderProductInfo();
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -249,20 +237,58 @@ describe('ProductInfo', () => {
     ).toBeDisabled();
   });
 
-  // Garante que a ação principal de adicionar ao carrinho aparece habilitada.
+  // Garante que a ação principal aparece habilitada.
   it('deve renderizar o botão Adicionar ao carrinho habilitado', () => {
-    render(
-      <ProductInfo
-        description="Top fitness com sustentação e tecido confortável."
-        name="Top Essential"
-        variants={VARIANTS}
-      />,
-    );
+    renderProductInfo();
 
     expect(
       screen.getByRole('button', {
         name: 'Adicionar ao carrinho',
       }),
     ).toBeEnabled();
+  });
+
+  // Garante que a primeira variante é enviada corretamente para a store.
+  it('deve adicionar a variante inicial ao carrinho', () => {
+    renderProductInfo();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Adicionar ao carrinho',
+      }),
+    );
+
+    expect(addItemMock).toHaveBeenCalledTimes(1);
+
+    expect(addItemMock).toHaveBeenCalledWith({
+      productId: 1,
+      productName: 'Top Essential',
+      productSlug: 'top-essential',
+      variant: VARIANTS[0],
+    });
+  });
+
+  // Garante que a variante escolhida pelo usuário é enviada para a store.
+  it('deve adicionar a variante selecionada ao carrinho', () => {
+    renderProductInfo();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Selecionar tamanho M',
+      }),
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Adicionar ao carrinho',
+      }),
+    );
+
+    expect(addItemMock).toHaveBeenCalledWith({
+      productId: 1,
+      productName: 'Top Essential',
+      productSlug: 'top-essential',
+      variant: VARIANTS[1],
+    });
   });
 });

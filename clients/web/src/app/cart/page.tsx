@@ -1,10 +1,18 @@
-import { ComingSoon } from '@/components/shared/coming-soon';
+import { Container } from '@/components/layout/container';
+import { CartItems } from '@/components/cart/cart-items';
 
 export default function CartPage() {
-    return (
-        <ComingSoon
-            title="Carrinho"
-            description="O carrinho de compras está sendo preparado e ficará disponível nas próximas atualizações."
-        />
-    );
+  return (
+    <main className="py-10 md:py-14">
+      <Container>
+        <div className="flex flex-col gap-8">
+          <h1 className="text-3xl font-bold text-foreground">
+            Carrinho
+          </h1>
+
+          <CartItems />
+        </div>
+      </Container>
+    </main>
+  );
 }

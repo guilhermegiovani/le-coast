@@ -3,11 +3,14 @@
 import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { useCartStore } from '@/stores/cart-store';
 import type { ProductVariant } from '@/types/product';
 
 type ProductInfoProps = {
   description: string;
   name: string;
+  productId: number;
+  productSlug: string;
   variants: ProductVariant[];
 };
 
@@ -20,9 +23,10 @@ const priceFormatter = new Intl.NumberFormat('pt-BR', {
 export function ProductInfo({
   description,
   name,
+  productId,
+  productSlug,
   variants,
 }: ProductInfoProps) {
-
   const colors = Array.from(
     new Map(
       variants.map((variant) => [
@@ -52,6 +56,9 @@ export function ProductInfo({
     firstVariant.size.id,
   );
 
+  const addItem = useCartStore((state) => state.addItem);
+
+  // Localiza a variante correspondente à cor e ao tamanho selecionados.
   const selectedVariant = useMemo(
     () =>
       variants.find(
@@ -91,9 +98,24 @@ export function ProductInfo({
       fallbackVariant;
 
     setSelectedColorId(colorId);
+
     if (nextVariant) {
       setSelectedSizeId(nextVariant.size.id);
     }
+  }
+
+  // Adiciona ao carrinho os dados do produto junto com a variante selecionada.
+  function handleAddToCart() {
+    if (!selectedVariant || selectedVariant.stock === 0) {
+      return;
+    }
+
+    addItem({
+      productId,
+      productName: name,
+      productSlug,
+      variant: selectedVariant,
+    });
   }
 
   return (
@@ -147,7 +169,9 @@ export function ProductInfo({
                 key={size.id}
                 type="button"
                 variant={
-                  selectedSizeId === size.id ? 'primary' : 'outline'
+                  selectedSizeId === size.id
+                    ? 'primary'
+                    : 'outline'
                 }
                 size="sm"
                 aria-label={`Selecionar tamanho ${size.name}`}
@@ -174,7 +198,9 @@ export function ProductInfo({
               key={color.id}
               type="button"
               variant={
-                selectedColorId === color.id ? 'primary' : 'outline'
+                selectedColorId === color.id
+                  ? 'primary'
+                  : 'outline'
               }
               size="sm"
               aria-label={`Selecionar cor ${color.name}`}
@@ -191,6 +217,7 @@ export function ProductInfo({
         type="button"
         size="lg"
         disabled={!selectedVariant || selectedVariant.stock === 0}
+        onClick={handleAddToCart}
       >
         Adicionar ao carrinho
       </Button>
