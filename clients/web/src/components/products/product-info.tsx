@@ -104,6 +104,8 @@ export function ProductInfo({
     }
   }
 
+  const [wasAdded, setWasAdded] = useState(false);
+
   // Adiciona ao carrinho os dados do produto junto com a variante selecionada.
   function handleAddToCart() {
     if (!selectedVariant || selectedVariant.stock === 0) {
@@ -116,7 +118,14 @@ export function ProductInfo({
       productSlug,
       variant: selectedVariant,
     });
+
+    setWasAdded(true);
+
+    window.setTimeout(() => {
+      setWasAdded(false);
+    }, 2000);
   }
+
 
   return (
     <section
@@ -219,8 +228,18 @@ export function ProductInfo({
         disabled={!selectedVariant || selectedVariant.stock === 0}
         onClick={handleAddToCart}
       >
-        Adicionar ao carrinho
+        {wasAdded ? 'Adicionado!' : 'Adicionar ao carrinho'}
       </Button>
+
+      {wasAdded && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-center text-sm font-medium text-primary"
+        >
+          Produto adicionado ao carrinho.
+        </p>
+      )}
     </section>
   );
 }

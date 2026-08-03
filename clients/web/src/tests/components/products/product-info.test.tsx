@@ -1,5 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
 import {
+  act,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
+import {
+  afterEach,
   beforeEach,
   describe,
   expect,
@@ -97,7 +103,11 @@ describe('ProductInfo', () => {
     addItemMock.mockClear();
   });
 
-  // Garante que o nome do produto é exibido como título principal.
+  // Garante que timers falsos não afetem os testes seguintes.
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('deve renderizar o nome do produto como h1', () => {
     renderProductInfo();
 
@@ -109,14 +119,12 @@ describe('ProductInfo', () => {
     ).toBeInTheDocument();
   });
 
-  // Garante que o preço inicial vem da primeira variante.
   it('deve renderizar o preço da variante inicial', () => {
     renderProductInfo();
 
     expect(screen.getByText('R$ 89,90')).toBeInTheDocument();
   });
 
-  // Garante que a descrição recebida é exibida para o usuário.
   it('deve renderizar a descrição do produto', () => {
     renderProductInfo();
 
@@ -127,7 +135,6 @@ describe('ProductInfo', () => {
     ).toBeInTheDocument();
   });
 
-  // Garante que os tamanhos únicos disponíveis são renderizados.
   it.each(['P', 'M'])(
     'deve renderizar a opção de tamanho %s',
     (size) => {
@@ -141,7 +148,6 @@ describe('ProductInfo', () => {
     },
   );
 
-  // Garante que as cores únicas disponíveis são renderizadas.
   it.each(['Preto', 'Rosa'])(
     'deve renderizar a opção de cor %s',
     (color) => {
@@ -155,7 +161,6 @@ describe('ProductInfo', () => {
     },
   );
 
-  // Garante que a primeira variante começa selecionada.
   it('deve iniciar com a primeira cor e o primeiro tamanho selecionados', () => {
     renderProductInfo();
 
@@ -172,7 +177,6 @@ describe('ProductInfo', () => {
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
-  // Garante que selecionar outro tamanho atualiza a variante exibida.
   it('deve atualizar preço e estoque ao selecionar outro tamanho', () => {
     renderProductInfo();
 
@@ -189,7 +193,6 @@ describe('ProductInfo', () => {
     ).toBeInTheDocument();
   });
 
-  // Garante que selecionar outra cor mantém uma combinação válida.
   it('deve selecionar uma variante válida ao trocar a cor', () => {
     renderProductInfo();
 
@@ -220,7 +223,6 @@ describe('ProductInfo', () => {
     expect(screen.getByText('R$ 109,90')).toBeInTheDocument();
   });
 
-  // Garante que tamanhos inexistentes para a cor atual ficam indisponíveis.
   it('deve desabilitar tamanhos inexistentes para a cor selecionada', () => {
     renderProductInfo();
 
@@ -237,7 +239,6 @@ describe('ProductInfo', () => {
     ).toBeDisabled();
   });
 
-  // Garante que a ação principal aparece habilitada.
   it('deve renderizar o botão Adicionar ao carrinho habilitado', () => {
     renderProductInfo();
 
@@ -248,7 +249,6 @@ describe('ProductInfo', () => {
     ).toBeEnabled();
   });
 
-  // Garante que a primeira variante é enviada corretamente para a store.
   it('deve adicionar a variante inicial ao carrinho', () => {
     renderProductInfo();
 
@@ -268,7 +268,6 @@ describe('ProductInfo', () => {
     });
   });
 
-  // Garante que a variante escolhida pelo usuário é enviada para a store.
   it('deve adicionar a variante selecionada ao carrinho', () => {
     renderProductInfo();
 
@@ -290,5 +289,43 @@ describe('ProductInfo', () => {
       productSlug: 'top-essential',
       variant: VARIANTS[1],
     });
+  });
+
+  // Garante que o usuário recebe uma confirmação imediata da ação.
+  it('deve exibir um feedback temporário ao adicionar ao carrinho', () => {
+    vi.useFakeTimers();
+
+    renderProductInfo();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Adicionar ao carrinho',
+      }),
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Adicionado!',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('status'),
+    ).toHaveTextContent('Produto adicionado ao carrinho.');
+
+    // Avança o tempo usado pelo setTimeout do componente.
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(
+      screen.queryByText('Produto adicionado ao carrinho.'),
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Adicionar ao carrinho',
+      }),
+    ).toBeInTheDocument();
   });
 });
