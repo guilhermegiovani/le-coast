@@ -1,9 +1,17 @@
 'use client';
 
-import { type SubmitEventHandler } from 'react';
+import {
+  type SubmitEventHandler,
+  useState,
+} from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatZipCode } from '@/lib/formatters/zip-code';
+import {
+  getAddressByZipCode,
+  ZipCodeNotFoundError,
+} from '@/services/zip-code-service';
 
 export type CheckoutFormData = {
   city: string;
@@ -32,6 +40,48 @@ export function CheckoutForm({
   onChange,
   onContinue,
 }: CheckoutFormProps) {
+  const [isLoadingZipCode, setIsLoadingZipCode] =
+    useState(false);
+
+  const [zipCodeError, setZipCodeError] =
+    useState<string>();
+
+  // Formata o CEP e consulta o endereço quando os oito dígitos forem preenchidos.
+  async function handleZipCodeChange(value: string) {
+    const formattedZipCode = formatZipCode(value);
+    const zipCodeDigits = formattedZipCode.replace(/\D/g, '');
+
+    onChange('zipCode', formattedZipCode);
+    setZipCodeError(undefined);
+
+    if (zipCodeDigits.length !== 8) {
+      return;
+    }
+
+    try {
+      setIsLoadingZipCode(true);
+
+      const address =
+        await getAddressByZipCode(formattedZipCode);
+
+      onChange('street', address.street);
+      onChange('neighborhood', address.neighborhood);
+      onChange('city', address.city);
+      onChange('state', address.state);
+    } catch (error) {
+      if (error instanceof ZipCodeNotFoundError) {
+        setZipCodeError('CEP não encontrado.');
+        return;
+      }
+
+      setZipCodeError(
+        'Não foi possível consultar o CEP. Tente novamente.',
+      );
+    } finally {
+      setIsLoadingZipCode(false);
+    }
+  }
+
   // Impede o recarregamento da página e avança para o pagamento.
   const handleSubmit: SubmitEventHandler<HTMLFormElement> = (
     event,
@@ -109,11 +159,18 @@ export function CheckoutForm({
           label="CEP"
           inputMode="numeric"
           autoComplete="postal-code"
+          maxLength={9}
           required
           value={formData.zipCode}
-          onChange={(event) =>
-            onChange('zipCode', event.target.value)
+          error={zipCodeError}
+          helperText={
+            isLoadingZipCode
+              ? 'Consultando CEP...'
+              : undefined
           }
+          onChange={(event) => {
+            void handleZipCodeChange(event.target.value);
+          }}
         />
 
         <Input
@@ -202,6 +259,7 @@ export function CheckoutForm({
         type="submit"
         variant="primary"
         className="mt-6 w-full md:w-auto"
+        disabled={isLoadingZipCode}
       >
         Continuar para pagamento
       </Button>

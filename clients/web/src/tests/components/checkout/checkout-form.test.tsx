@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import {
   beforeEach,
   describe,
@@ -11,6 +16,30 @@ import {
   CheckoutForm,
   type CheckoutFormData,
 } from '@/components/checkout/checkout-form';
+
+// Cria o mock e a classe antes do carregamento dos módulos.
+const {
+  getAddressByZipCodeMock,
+  ZipCodeNotFoundErrorMock,
+} = vi.hoisted(() => {
+  class ZipCodeNotFoundErrorMock extends Error {
+    constructor() {
+      super('CEP não encontrado.');
+      this.name = 'ZipCodeNotFoundError';
+    }
+  }
+
+  return {
+    getAddressByZipCodeMock: vi.fn(),
+    ZipCodeNotFoundErrorMock,
+  };
+});
+
+// Simula o serviço externo sem realizar chamadas reais ao ViaCEP.
+vi.mock('@/services/zip-code-service', () => ({
+  getAddressByZipCode: getAddressByZipCodeMock,
+  ZipCodeNotFoundError: ZipCodeNotFoundErrorMock,
+}));
 
 const onChangeMock = vi.fn();
 const onContinueMock = vi.fn();
@@ -26,6 +55,13 @@ const FORM_DATA: CheckoutFormData = {
   state: 'SP',
   street: 'Rua das Flores',
   zipCode: '14000-000',
+};
+
+const ZIP_CODE_ADDRESS = {
+  city: 'Ribeirão Preto',
+  neighborhood: 'Centro',
+  state: 'SP',
+  street: 'Rua das Flores',
 };
 
 function renderComponent(
@@ -45,6 +81,11 @@ describe('CheckoutForm', () => {
   beforeEach(() => {
     onChangeMock.mockClear();
     onContinueMock.mockClear();
+    getAddressByZipCodeMock.mockReset();
+
+    getAddressByZipCodeMock.mockResolvedValue(
+      ZIP_CODE_ADDRESS,
+    );
   });
 
   // Garante que o título da etapa de entrega é exibido.
@@ -129,7 +170,6 @@ describe('CheckoutForm', () => {
   it.each([
     ['E-mail', 'email', 'novo@email.com'],
     ['Telefone', 'phone', '16111111111'],
-    ['CEP', 'zipCode', '14010-000'],
     ['Rua', 'street', 'Avenida Brasil'],
     ['Número', 'number', '456'],
     ['Complemento', 'complement', 'Casa'],
@@ -211,16 +251,264 @@ describe('CheckoutForm', () => {
     ).not.toBeRequired();
   });
 
-  // Garante que o formulário avança quando todos os dados são válidos.
-  it('deve chamar onContinue ao enviar o formulário válido', () => {
+  // Garante que o formulário avança quando os dados são enviados.
+  it('deve chamar onContinue ao enviar o formulário', () => {
     renderComponent();
 
     fireEvent.submit(
-      screen.getByRole('button', {
-        name: 'Continuar para pagamento',
-      }).closest('form')!,
+      screen
+        .getByRole('button', {
+          name: 'Continuar para pagamento',
+        })
+        .closest('form')!,
     );
 
     expect(onContinueMock).toHaveBeenCalledTimes(1);
+  });
+
+  // Garante que o CEP é formatado antes de ser enviado ao componente pai.
+  it('deve formatar o CEP ao alterar o campo', () => {
+    renderComponent();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+      {
+        target: {
+          value: '1401012',
+        },
+      },
+    );
+
+    expect(onChangeMock).toHaveBeenCalledWith(
+      'zipCode',
+      '14010-12',
+    );
+  });
+
+  // Garante que CEP incompleto não dispara uma consulta.
+  it('não deve consultar o endereço enquanto o CEP estiver incompleto', () => {
+    renderComponent();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+      {
+        target: {
+          value: '1401012',
+        },
+      },
+    );
+
+    expect(
+      getAddressByZipCodeMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que a consulta é feita quando o CEP possui oito dígitos.
+  it('deve consultar o endereço quando o CEP estiver completo', async () => {
+    renderComponent();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+      {
+        target: {
+          value: '14010120',
+        },
+      },
+    );
+
+    expect(onChangeMock).toHaveBeenCalledWith(
+      'zipCode',
+      '14010-120',
+    );
+
+    await waitFor(() => {
+      expect(
+        getAddressByZipCodeMock,
+      ).toHaveBeenCalledWith('14010-120');
+    });
+  });
+
+  // Garante que o endereço retornado é enviado ao componente pai.
+  it('deve preencher os campos com o endereço encontrado', async () => {
+    renderComponent();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+      {
+        target: {
+          value: '14010120',
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(onChangeMock).toHaveBeenCalledWith(
+        'street',
+        'Rua das Flores',
+      );
+
+      expect(onChangeMock).toHaveBeenCalledWith(
+        'neighborhood',
+        'Centro',
+      );
+
+      expect(onChangeMock).toHaveBeenCalledWith(
+        'city',
+        'Ribeirão Preto',
+      );
+
+      expect(onChangeMock).toHaveBeenCalledWith(
+        'state',
+        'SP',
+      );
+    });
+  });
+
+  // Garante que o usuário recebe feedback durante a consulta.
+  it('deve exibir carregamento durante a consulta do CEP', async () => {
+    let resolveRequest: (
+      address: typeof ZIP_CODE_ADDRESS,
+    ) => void;
+
+    getAddressByZipCodeMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+
+    renderComponent();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+      {
+        target: {
+          value: '14010120',
+        },
+      },
+    );
+
+    expect(
+      await screen.findByText('Consultando CEP...'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Continuar para pagamento',
+      }),
+    ).toBeDisabled();
+
+    resolveRequest!(ZIP_CODE_ADDRESS);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Consultando CEP...'),
+      ).not.toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Continuar para pagamento',
+      }),
+    ).toBeEnabled();
+  });
+
+  // Garante que CEP inexistente apresenta uma mensagem específica.
+  it('deve exibir erro quando o CEP não for encontrado', async () => {
+    getAddressByZipCodeMock.mockRejectedValue(
+      new ZipCodeNotFoundErrorMock(),
+    );
+
+    renderComponent();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+      {
+        target: {
+          value: '99999999',
+        },
+      },
+    );
+
+    expect(
+      await screen.findByText('CEP não encontrado.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+    ).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  // Garante que falhas inesperadas apresentam uma mensagem genérica.
+  it('deve exibir erro quando a consulta do CEP falhar', async () => {
+    getAddressByZipCodeMock.mockRejectedValue(
+      new Error('Falha de conexão'),
+    );
+
+    renderComponent();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+      {
+        target: {
+          value: '14010120',
+        },
+      },
+    );
+
+    expect(
+      await screen.findByText(
+        'Não foi possível consultar o CEP. Tente novamente.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // Garante que um novo valor limpa o erro anterior.
+  it('deve limpar o erro ao alterar novamente o CEP', async () => {
+    getAddressByZipCodeMock.mockRejectedValueOnce(
+      new ZipCodeNotFoundErrorMock(),
+    );
+
+    renderComponent();
+
+    const zipCodeInput = screen.getByRole('textbox', {
+      name: 'CEP',
+    });
+
+    fireEvent.change(zipCodeInput, {
+      target: {
+        value: '99999999',
+      },
+    });
+
+    expect(
+      await screen.findByText('CEP não encontrado.'),
+    ).toBeInTheDocument();
+
+    fireEvent.change(zipCodeInput, {
+      target: {
+        value: '14010',
+      },
+    });
+
+    expect(
+      screen.queryByText('CEP não encontrado.'),
+    ).not.toBeInTheDocument();
   });
 });
