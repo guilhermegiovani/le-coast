@@ -1,6 +1,14 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/stores/cart-store';
+
+export type CheckoutStep = 'delivery' | 'payment' | 'review';
+
+type CheckoutSummaryProps = {
+  currentStep: CheckoutStep;
+  onFinalize: () => void;
+};
 
 // Formata valores no padrão monetário brasileiro.
 const priceFormatter = new Intl.NumberFormat('pt-BR', {
@@ -8,7 +16,10 @@ const priceFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
 });
 
-export function CheckoutSummary() {
+export function CheckoutSummary({
+  currentStep,
+  onFinalize,
+}: CheckoutSummaryProps) {
   const items = useCartStore((state) => state.items);
 
   // Soma todas as unidades existentes no pedido.
@@ -78,10 +89,45 @@ export function CheckoutSummary() {
         </div>
       </dl>
 
-      <div className="mt-6 rounded-lg border border-border bg-background p-4">
-        <p className="text-sm text-muted">
-          O pagamento será liberado após preencher os dados de entrega.
-        </p>
+      <div className="mt-6">
+        {currentStep === 'delivery' && (
+          <div className="rounded-lg border border-border bg-background p-4">
+            <p className="text-sm text-muted">
+              O pagamento será liberado após preencher os dados de
+              entrega.
+            </p>
+          </div>
+        )}
+
+        {currentStep === 'payment' && (
+          <div className="rounded-lg border border-border bg-background p-4">
+            <p className="text-sm text-muted">
+              Selecione uma forma de pagamento para continuar.
+            </p>
+          </div>
+        )}
+
+        {currentStep === 'review' && (
+          <div className="flex flex-col gap-4">
+            <div className="rounded-lg border border-border bg-background p-4">
+              <p className="text-sm text-muted">
+                Confira os dados de entrega e pagamento antes de
+                concluir.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={items.length === 0}
+              onClick={onFinalize}
+            >
+              Finalizar pedido
+            </Button>
+          </div>
+        )}
       </div>
     </aside>
   );
