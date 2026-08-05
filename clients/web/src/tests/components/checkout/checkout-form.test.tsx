@@ -57,6 +57,19 @@ const FORM_DATA: CheckoutFormData = {
   zipCode: '14000-000',
 };
 
+const EMPTY_FORM_DATA: CheckoutFormData = {
+  city: '',
+  complement: '',
+  email: '',
+  name: '',
+  neighborhood: '',
+  number: '',
+  phone: '',
+  state: '',
+  street: '',
+  zipCode: '',
+};
+
 const ZIP_CODE_ADDRESS = {
   city: 'Ribeirão Preto',
   neighborhood: 'Centro',
@@ -250,8 +263,8 @@ describe('CheckoutForm', () => {
     ).not.toBeRequired();
   });
 
-  // Garante que o formulário avança quando os dados são enviados.
-  it('deve chamar onContinue ao enviar o formulário', () => {
+  // Garante que o formulário avança quando todos os dados forem válidos.
+  it('deve chamar onContinue ao enviar o formulário válido', () => {
     renderComponent();
 
     fireEvent.submit(
@@ -530,5 +543,205 @@ describe('CheckoutForm', () => {
       'phone',
       '(16) 99999-8888',
     );
+  });
+
+  // Garante que dados inválidos impedem o avanço para o pagamento.
+  it('não deve chamar onContinue quando o formulário for inválido', () => {
+    renderComponent(EMPTY_FORM_DATA);
+
+    fireEvent.submit(
+      screen
+        .getByRole('button', {
+          name: 'Continuar para pagamento',
+        })
+        .closest('form')!,
+    );
+
+    expect(onContinueMock).not.toHaveBeenCalled();
+  });
+
+  // Garante que as mensagens de validação são exibidas nos respectivos campos.
+  it('deve exibir os erros dos campos inválidos', () => {
+    renderComponent(EMPTY_FORM_DATA);
+
+    fireEvent.submit(
+      screen
+        .getByRole('button', {
+          name: 'Continuar para pagamento',
+        })
+        .closest('form')!,
+    );
+
+    expect(
+      screen.getByText('Informe seu nome completo.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Informe seu e-mail.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Informe um telefone válido.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Informe um CEP válido.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Informe a sigla do estado.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Informe a rua.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Informe o número.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Informe o bairro.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Informe a cidade.'),
+    ).toBeInTheDocument();
+  });
+
+  // Garante que os campos inválidos são identificados para tecnologias assistivas.
+  it('deve marcar os campos inválidos com aria-invalid', () => {
+    renderComponent(EMPTY_FORM_DATA);
+
+    fireEvent.submit(
+      screen
+        .getByRole('button', {
+          name: 'Continuar para pagamento',
+        })
+        .closest('form')!,
+    );
+
+    expect(
+      screen.getByRole('textbox', {
+        name: 'Nome completo',
+      }),
+    ).toHaveAttribute('aria-invalid', 'true');
+
+    expect(
+      screen.getByRole('textbox', {
+        name: 'E-mail',
+      }),
+    ).toHaveAttribute('aria-invalid', 'true');
+
+    expect(
+      screen.getByRole('textbox', {
+        name: 'Telefone',
+      }),
+    ).toHaveAttribute('aria-invalid', 'true');
+
+    expect(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+    ).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  // Garante que alterar um campo remove somente o erro correspondente.
+  it('deve limpar o erro do campo quando ele for alterado', () => {
+    renderComponent(EMPTY_FORM_DATA);
+
+    fireEvent.submit(
+      screen
+        .getByRole('button', {
+          name: 'Continuar para pagamento',
+        })
+        .closest('form')!,
+    );
+
+    expect(
+      screen.getByText('Informe seu nome completo.'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Informe seu e-mail.'),
+    ).toBeInTheDocument();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'Nome completo',
+      }),
+      {
+        target: {
+          value: 'Guilherme Nobre',
+        },
+      },
+    );
+
+    expect(
+      screen.queryByText('Informe seu nome completo.'),
+    ).not.toBeInTheDocument();
+
+    // O erro de outro campo deve continuar visível.
+    expect(
+      screen.getByText('Informe seu e-mail.'),
+    ).toBeInTheDocument();
+
+    expect(onChangeMock).toHaveBeenCalledWith(
+      'name',
+      'Guilherme Nobre',
+    );
+  });
+
+  // Garante que o preenchimento pelo ViaCEP remove os erros do endereço.
+  it('deve limpar os erros de endereço após encontrar o CEP', async () => {
+    renderComponent({
+      ...FORM_DATA,
+      city: '',
+      neighborhood: '',
+      state: '',
+      street: '',
+      zipCode: '',
+    });
+
+    fireEvent.submit(
+      screen
+        .getByRole('button', {
+          name: 'Continuar para pagamento',
+        })
+        .closest('form')!,
+    );
+
+    expect(screen.getByText('Informe a rua.')).toBeInTheDocument();
+    expect(screen.getByText('Informe o bairro.')).toBeInTheDocument();
+    expect(screen.getByText('Informe a cidade.')).toBeInTheDocument();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'CEP',
+      }),
+      {
+        target: {
+          value: '14010120',
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Informe a rua.'),
+      ).not.toBeInTheDocument();
+
+      expect(
+        screen.queryByText('Informe o bairro.'),
+      ).not.toBeInTheDocument();
+
+      expect(
+        screen.queryByText('Informe a cidade.'),
+      ).not.toBeInTheDocument();
+
+      expect(
+        screen.queryByText('Informe a sigla do estado.'),
+      ).not.toBeInTheDocument();
+    });
   });
 });

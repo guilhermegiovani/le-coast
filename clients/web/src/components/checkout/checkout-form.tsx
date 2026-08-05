@@ -7,8 +7,12 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { formatZipCode } from '@/lib/formatters/zip-code';
 import { formatPhone } from '@/lib/formatters/phone';
+import { formatZipCode } from '@/lib/formatters/zip-code';
+import {
+  type CheckoutFormErrors,
+  validateCheckoutForm,
+} from '@/lib/validators/checkout';
 import {
   getAddressByZipCode,
   ZipCodeNotFoundError,
@@ -41,18 +45,18 @@ export function CheckoutForm({
   onChange,
   onContinue,
 }: CheckoutFormProps) {
-  const [isLoadingZipCode, setIsLoadingZipCode] =
-    useState(false);
+  const [isLoadingZipCode, setIsLoadingZipCode] = useState(false);
 
-  const [zipCodeError, setZipCodeError] =
-    useState<string>();
+  const [zipCodeError, setZipCodeError] = useState<string>();
+
+  const [formErrors, setFormErrors] = useState<CheckoutFormErrors>({});
 
   // Formata o CEP e consulta o endereço quando os oito dígitos forem preenchidos.
   async function handleZipCodeChange(value: string) {
     const formattedZipCode = formatZipCode(value);
     const zipCodeDigits = formattedZipCode.replace(/\D/g, '');
 
-    onChange('zipCode', formattedZipCode);
+    handleFieldChange('zipCode', formattedZipCode);
     setZipCodeError(undefined);
 
     if (zipCodeDigits.length !== 8) {
@@ -65,10 +69,10 @@ export function CheckoutForm({
       const address =
         await getAddressByZipCode(formattedZipCode);
 
-      onChange('street', address.street);
-      onChange('neighborhood', address.neighborhood);
-      onChange('city', address.city);
-      onChange('state', address.state);
+      handleFieldChange('street', address.street);
+      handleFieldChange('neighborhood', address.neighborhood);
+      handleFieldChange('city', address.city);
+      handleFieldChange('state', address.state);
     } catch (error) {
       if (error instanceof ZipCodeNotFoundError) {
         setZipCodeError('CEP não encontrado.');
@@ -89,8 +93,37 @@ export function CheckoutForm({
   ) => {
     event.preventDefault();
 
+    const errors = validateCheckoutForm(formData);
+
+    setFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
     onContinue();
   };
+
+  function handleFieldChange(
+    field: keyof CheckoutFormData,
+    value: string,
+  ) {
+    onChange(field, value);
+
+    setFormErrors((currentErrors) => {
+      if (!currentErrors[field]) {
+        return currentErrors;
+      }
+
+      const nextErrors = {
+        ...currentErrors,
+      };
+
+      delete nextErrors[field];
+
+      return nextErrors;
+    });
+  }
 
   return (
     <form
@@ -121,8 +154,9 @@ export function CheckoutForm({
             autoComplete="name"
             required
             value={formData.name}
+            error={formErrors.name}
             onChange={(event) =>
-              onChange('name', event.target.value)
+              handleFieldChange('name', event.target.value)
             }
           />
         </div>
@@ -135,8 +169,9 @@ export function CheckoutForm({
           autoComplete="email"
           required
           value={formData.email}
+          error={formErrors.email}
           onChange={(event) =>
-            onChange('email', event.target.value)
+            handleFieldChange('email', event.target.value)
           }
         />
 
@@ -150,8 +185,9 @@ export function CheckoutForm({
           maxLength={15}
           required
           value={formData.phone}
+          error={formErrors.phone}
           onChange={(event) =>
-            onChange(
+            handleFieldChange(
               'phone',
               formatPhone(event.target.value),
             )
@@ -168,7 +204,7 @@ export function CheckoutForm({
           maxLength={9}
           required
           value={formData.zipCode}
-          error={zipCodeError}
+          error={zipCodeError ?? formErrors.zipCode}
           helperText={
             isLoadingZipCode
               ? 'Consultando CEP...'
@@ -188,8 +224,9 @@ export function CheckoutForm({
           autoComplete="address-level1"
           required
           value={formData.state}
+          error={formErrors.state}
           onChange={(event) =>
-            onChange(
+            handleFieldChange(
               'state',
               event.target.value.toUpperCase(),
             )
@@ -205,8 +242,9 @@ export function CheckoutForm({
             autoComplete="address-line1"
             required
             value={formData.street}
+            error={formErrors.street}
             onChange={(event) =>
-              onChange('street', event.target.value)
+              handleFieldChange('street', event.target.value)
             }
           />
         </div>
@@ -218,8 +256,9 @@ export function CheckoutForm({
           label="Número"
           required
           value={formData.number}
+          error={formErrors.number}
           onChange={(event) =>
-            onChange('number', event.target.value)
+            handleFieldChange('number', event.target.value)
           }
         />
 
@@ -231,7 +270,7 @@ export function CheckoutForm({
           autoComplete="address-line2"
           value={formData.complement}
           onChange={(event) =>
-            onChange('complement', event.target.value)
+            handleFieldChange('complement', event.target.value)
           }
         />
 
@@ -242,8 +281,9 @@ export function CheckoutForm({
           label="Bairro"
           required
           value={formData.neighborhood}
+          error={formErrors.neighborhood}
           onChange={(event) =>
-            onChange('neighborhood', event.target.value)
+            handleFieldChange('neighborhood', event.target.value)
           }
         />
 
@@ -255,8 +295,9 @@ export function CheckoutForm({
           autoComplete="address-level2"
           required
           value={formData.city}
+          error={formErrors.city}
           onChange={(event) =>
-            onChange('city', event.target.value)
+            handleFieldChange('city', event.target.value)
           }
         />
       </div>
