@@ -169,7 +169,6 @@ describe('CheckoutForm', () => {
   // Garante que cada campo comunica sua chave correta.
   it.each([
     ['E-mail', 'email', 'novo@email.com'],
-    ['Telefone', 'phone', '16111111111'],
     ['Rua', 'street', 'Avenida Brasil'],
     ['Número', 'number', '456'],
     ['Complemento', 'complement', 'Casa'],
@@ -510,5 +509,26 @@ describe('CheckoutForm', () => {
     expect(
       screen.queryByText('CEP não encontrado.'),
     ).not.toBeInTheDocument();
+  });
+
+  // Garante que o telefone é formatado antes de ser enviado ao componente pai.
+  it('deve formatar o telefone ao alterar o campo', () => {
+    renderComponent();
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'Telefone',
+      }),
+      {
+        target: {
+          value: '16999998888',
+        },
+      },
+    );
+
+    expect(onChangeMock).toHaveBeenCalledWith(
+      'phone',
+      '(16) 99999-8888',
+    );
   });
 });

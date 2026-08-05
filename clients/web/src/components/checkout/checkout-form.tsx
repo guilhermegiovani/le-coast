@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatZipCode } from '@/lib/formatters/zip-code';
+import { formatPhone } from '@/lib/formatters/phone';
 import {
   getAddressByZipCode,
   ZipCodeNotFoundError,
@@ -144,11 +145,16 @@ export function CheckoutForm({
           name="phone"
           type="tel"
           label="Telefone"
+          inputMode="tel"
           autoComplete="tel"
+          maxLength={15}
           required
           value={formData.phone}
           onChange={(event) =>
-            onChange('phone', event.target.value)
+            onChange(
+              'phone',
+              formatPhone(event.target.value),
+            )
           }
         />
 
