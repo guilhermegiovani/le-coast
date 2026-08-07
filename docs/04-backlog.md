@@ -38,9 +38,9 @@ Preparar a estrutura inicial do monorepo, configurar os projetos e estabelecer o
 ### Tarefas
 
 - [x] BK001 - Criar estrutura inicial do monorepo
-- [ ] BK002 - Configurar projeto Backend
+- [x] BK002 - Configurar projeto Backend
 - [x] BK003 - Configurar projeto Frontend
-- [ ] BK004 - Configurar PostgreSQL
+- [x] BK004 - Configurar PostgreSQL
 - [ ] BK005 - Configurar Docker
 - [x] BK006 - Configurar ESLint
 - [ ] BK007 - Configurar Prettier
@@ -146,7 +146,7 @@ Implementar autenticação e gerenciamento básico de contas de usuários.
 ### Tarefas
 
 - [x] BK033 - Criar tabela de usuários
-- [ ] BK034 - Criar endpoint de cadastro
+- [x] BK034 - Criar endpoint de cadastro
 - [ ] BK035 - Criar endpoint de login
 - [ ] BK036 - Implementar autenticação JWT
 - [ ] BK037 - Implementar renovação ou validação de sessão
@@ -189,19 +189,19 @@ Disponibilizar o catálogo de produtos para navegação, pesquisa e consulta.
 - [ ] BK046 - Criar tabela de categorias
 - [ ] BK047 - Criar tabela de produtos
 - [ ] BK048 - Criar tabela de imagens dos produtos
-- [ ] BK049 - Criar variações de produto por tamanho e cor
+- [~] BK049 - Criar variações de produto por tamanho e cor
 - [ ] BK050 - Criar CRUD de categorias
 - [ ] BK051 - Criar CRUD de produtos
-- [ ] BK052 - Criar listagem pública de produtos
+- [x] BK052 - Criar listagem pública de produtos
 - [ ] BK053 - Implementar pesquisa
 - [ ] BK054 - Implementar filtros
 - [ ] BK055 - Implementar ordenação
 - [ ] BK056 - Implementar paginação
-- [ ] BK057 - Criar página de detalhes do produto
-- [ ] BK058 - Criar galeria de imagens do produto
-- [ ] BK059 - Implementar seleção de tamanho e cor
+- [x] BK057 - Criar página de detalhes do produto
+- [~] BK058 - Criar galeria de imagens do produto
+- [x] BK059 - Implementar seleção de tamanho e cor
 - [ ] BK060 - Implementar favoritos
-- [ ] BK061 - Criar testes do catálogo
+- [~] BK061 - Criar testes do catálogo
 
 ---
 
@@ -230,17 +230,17 @@ Permitir que o cliente monte e gerencie seu carrinho de compras.
 
 ### Tarefas
 
-- [ ] BK062 - Criar estrutura de dados do carrinho
-- [ ] BK063 - Adicionar produto ao carrinho
-- [ ] BK064 - Alterar quantidade dos produtos
-- [ ] BK065 - Remover produtos
-- [ ] BK066 - Limpar carrinho
-- [ ] BK067 - Calcular subtotal
-- [ ] BK068 - Calcular valor total
-- [ ] BK069 - Persistir carrinho
-- [ ] BK070 - Validar disponibilidade em estoque
-- [] BK071 - Criar página do carrinho
-- [] BK072 - Criar testes do carrinho
+- [x] BK062 - Criar estrutura de dados do carrinho
+- [x] BK063 - Adicionar produto ao carrinho
+- [x] BK064 - Alterar quantidade dos produtos
+- [x] BK065 - Remover produtos
+- [x] BK066 - Limpar carrinho
+- [x] BK067 - Calcular subtotal
+- [x] BK068 - Calcular valor total
+- [x] BK069 - Persistir carrinho
+- [~] BK070 - Validar disponibilidade em estoque
+- [x] BK071 - Criar página do carrinho
+- [x] BK072 - Criar testes do carrinho
 
 ---
 
@@ -269,11 +269,11 @@ Permitir que o cliente finalize uma compra e acompanhe seus pedidos.
 
 ### Tarefas
 
-- [ ] BK073 - Criar tabela de endereços
+- [x] BK073 - Criar tabela de endereços
 - [ ] BK074 - Criar tabela de pedidos
 - [ ] BK075 - Criar tabela de itens do pedido
-- [ ] BK076 - Criar fluxo de checkout
-- [ ] BK077 - Implementar cadastro e seleção de endereço
+- [~] BK076 - Criar fluxo de checkout
+- [~] BK077 - Implementar cadastro e seleção de endereço
 - [ ] BK078 - Implementar cálculo de frete
 - [ ] BK079 - Integrar gateway de pagamento
 - [ ] BK080 - Criar pedido após confirmação do pagamento
@@ -282,7 +282,7 @@ Permitir que o cliente finalize uma compra e acompanhe seus pedidos.
 - [ ] BK083 - Criar histórico de pedidos
 - [ ] BK084 - Criar página de detalhes do pedido
 - [ ] BK085 - Implementar atualização de status
-- [ ] BK086 - Criar testes do checkout e pedidos
+- [~] BK086 - Criar testes do checkout e pedidos
 
 ---
 
