@@ -145,7 +145,7 @@ Implementar autenticação e gerenciamento básico de contas de usuários.
 
 ### Tarefas
 
-- [ ] BK033 - Criar tabela de usuários
+- [x] BK033 - Criar tabela de usuários
 - [ ] BK034 - Criar endpoint de cadastro
 - [ ] BK035 - Criar endpoint de login
 - [ ] BK036 - Implementar autenticação JWT
@@ -239,8 +239,8 @@ Permitir que o cliente monte e gerencie seu carrinho de compras.
 - [ ] BK068 - Calcular valor total
 - [ ] BK069 - Persistir carrinho
 - [ ] BK070 - Validar disponibilidade em estoque
-- [ ] BK071 - Criar página do carrinho
-- [ ] BK072 - Criar testes do carrinho
+- [] BK071 - Criar página do carrinho
+- [] BK072 - Criar testes do carrinho
 
 ---
 
