@@ -1,0 +1,106 @@
+// Gera o Prisma Client utilizado pelo backend para acessar o banco.
+// O client será gerado dentro de src/generated/prisma.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Define o banco utilizado pela aplicação.
+// A URL de conexão fica no prisma.config.ts / DATABASE_URL.
+datasource db {
+  provider = "postgresql"
+}
+
+// Papéis disponíveis para um usuário da aplicação.
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+// Representa um usuário cadastrado na Le Coast.
+model User {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  name String
+
+  // @unique impede dois usuários de utilizarem o mesmo e-mail.
+  email String @unique
+
+  // No TypeScript será passwordHash, mas no PostgreSQL será password_hash.
+  // Armazena somente o hash da senha, nunca a senha original.
+  passwordHash String @map("password_hash")
+
+  // Todo novo usuário começa como cliente por padrão.
+  role UserRole @default(CUSTOMER)
+
+  // Permite desativar uma conta sem precisar excluí-la.
+  isActive Boolean @default(true) @map("is_active")
+
+  // now() define automaticamente a data de criação.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // @updatedAt atualiza essa data automaticamente a cada alteração.
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relação 1:N:
+  // um usuário pode possuir vários endereços.
+  // Este campo representa a relação no Prisma e não cria
+  // uma coluna "addresses" na tabela users.
+  addresses Address[]
+
+  // Mantém o model como User no Prisma/TypeScript,
+  // mas utiliza "users" como nome da tabela no PostgreSQL.
+  @@map("users")
+}
+
+// Representa um endereço salvo por um usuário.
+model Address {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Chave estrangeira que referencia User.id.
+  // No Prisma será userId e no PostgreSQL será user_id.
+  userId Int @map("user_id")
+
+  // Nome dado ao endereço, por exemplo "Casa" ou "Trabalho".
+  name String
+
+  street String
+  number String
+
+  // O ? significa que o campo é opcional e pode ser NULL.
+  complement String?
+
+  neighborhood String
+  city         String
+  state        String
+
+  // No Prisma será zipCode e no PostgreSQL será zip_code.
+  zipCode String @map("zip_code")
+
+  // Como o e-commerce é brasileiro, BR será usado por padrão.
+  country String @default("BR")
+
+  // Indica se este é o endereço principal do usuário.
+  isDefault Boolean @default(false) @map("is_default")
+
+  // Datas continuam em camelCase no Prisma e snake_case no banco.
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Define a relação entre Address e User.
+  //
+  // fields: campo deste model que contém a FK.
+  // references: campo correspondente no model User.
+  //
+  // onDelete: Cascade significa que, se o usuário for realmente
+  // excluído do banco, seus endereços também serão excluídos.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Cria um índice para melhorar buscas de endereços por usuário.
+  @@index([userId])
+  // Mantém o model como Address no Prisma/TypeScript,
+  // mas utiliza "addresses" como nome da tabela no PostgreSQL.
+  @@map("addresses")
+}
