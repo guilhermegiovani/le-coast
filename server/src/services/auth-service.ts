@@ -1,3 +1,4 @@
+import { AppError } from '../errors/app-error.js';
 import bcrypt from 'bcryptjs';
 
 import {
@@ -23,7 +24,7 @@ export async function registerUser(
   const existingUser = await findUserByEmail(normalizedEmail);
 
   if (existingUser) {
-    throw new Error('E-mail já cadastrado.');
+    throw new AppError('E-mail já cadastrado.', 409);
   }
 
   // Nunca salvamos a senha original no banco.
