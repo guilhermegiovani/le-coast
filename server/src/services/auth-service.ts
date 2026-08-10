@@ -1,5 +1,6 @@
 import { AppError } from '../errors/app-error.js';
 import bcrypt from 'bcryptjs';
+import { validateRegisterInput } from '../validators/auth-validator.js';
 
 import {
   createUser,
@@ -17,6 +18,8 @@ const PASSWORD_SALT_ROUNDS = 12;
 export async function registerUser(
   input: RegisterUserInput,
 ): Promise<RegisterUserResult> {
+  validateRegisterInput(input);
+  
   const normalizedEmail = input.email.trim().toLowerCase();
   const normalizedName = input.name.trim();
 
