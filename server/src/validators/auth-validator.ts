@@ -1,5 +1,5 @@
 import { AppError } from '../errors/app-error.js';
-import type { RegisterUserInput } from '../types/auth.js';
+import type { LoginUserInput, RegisterUserInput } from '../types/auth.js';
 
 // Valida os dados necessários para o cadastro de um usuário.
 export function validateRegisterInput(
@@ -37,5 +37,30 @@ export function validateRegisterInput(
       'A senha deve conter pelo menos 8 caracteres.',
       400,
     );
+  }
+}
+
+// Valida os dados necessários para autenticar um usuário.
+export function validateLoginInput(
+  input: LoginUserInput,
+) {
+  const email = input.email.trim();
+  const password = input.password;
+
+  // Garante que o e-mail seja informado.
+  if (!email) {
+    throw new AppError('Informe seu e-mail.', 400);
+  }
+
+  // Valida a estrutura básica esperada para um endereço de e-mail.
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(email)) {
+    throw new AppError('Informe um e-mail válido.', 400);
+  }
+
+  // Garante que a senha seja informada.
+  if (!password) {
+    throw new AppError('Informe sua senha.', 400);
   }
 }

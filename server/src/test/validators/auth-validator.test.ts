@@ -4,11 +4,16 @@ import {
   it,
 } from 'vitest';
 
-import { validateRegisterInput } from '../../validators/auth-validator.js';
+import { validateLoginInput, validateRegisterInput } from '../../validators/auth-validator.js';
 
 const VALID_INPUT = {
   email: 'guilherme@example.com',
   name: 'Guilherme Nobre',
+  password: '12345678',
+};
+
+const VALID_LOGIN_INPUT = {
+  email: 'guilherme@example.com',
   password: '12345678',
 };
 
@@ -80,6 +85,61 @@ describe('validateRegisterInput', () => {
       validateRegisterInput({
         ...VALID_INPUT,
         email: 'inválido',
+      });
+    } catch (error) {
+      expect(error).toMatchObject({
+        statusCode: 400,
+      });
+    }
+  });
+});
+
+// Agrupa os testes das regras de validação do login.
+describe('validateLoginInput', () => {
+  // Garante que credenciais preenchidas corretamente sejam aceitas.
+  it('não deve lançar erro quando os dados forem válidos', () => {
+    expect(() =>
+      validateLoginInput(VALID_LOGIN_INPUT),
+    ).not.toThrow();
+  });
+
+  // Garante que o e-mail seja obrigatório.
+  it('deve exigir o e-mail', () => {
+    expect(() =>
+      validateLoginInput({
+        ...VALID_LOGIN_INPUT,
+        email: '   ',
+      }),
+    ).toThrow('Informe seu e-mail.');
+  });
+
+  // Garante que um endereço de e-mail inválido seja rejeitado.
+  it('deve rejeitar um e-mail inválido', () => {
+    expect(() =>
+      validateLoginInput({
+        ...VALID_LOGIN_INPUT,
+        email: 'email-invalido',
+      }),
+    ).toThrow('Informe um e-mail válido.');
+  });
+
+  // Garante que a senha seja obrigatória.
+  it('deve exigir a senha', () => {
+    expect(() =>
+      validateLoginInput({
+        ...VALID_LOGIN_INPUT,
+        password: '',
+      }),
+    ).toThrow('Informe sua senha.');
+  });
+
+  // Garante que erros de validação sejam tratados
+  // como uma requisição inválida.
+  it('deve retornar status 400 para dados inválidos', () => {
+    try {
+      validateLoginInput({
+        ...VALID_LOGIN_INPUT,
+        email: '',
       });
     } catch (error) {
       expect(error).toMatchObject({

@@ -10,3 +10,18 @@ export type RegisterUserResult = {
   name: string;
   role: 'CUSTOMER' | 'ADMIN';
 };
+
+export type LoginUserInput = {
+  email: string;
+  password: string;
+};
+
+export type LoginUserResult = {
+  token: string;
+  user: {
+    email: string;
+    id: number;
+    name: string;
+    role: 'CUSTOMER' | 'ADMIN';
+  };
+};
