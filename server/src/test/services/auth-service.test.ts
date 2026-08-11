@@ -10,12 +10,19 @@ import {
 import {
   createUser,
   findUserByEmail,
+  findUserById,
 } from '../../repositories/user-repository.js';
-import { registerUser, loginUser } from '../../services/auth-service.js';
+
+import {
+  getAuthenticatedUser,
+  loginUser,
+  registerUser,
+} from '../../services/auth-service.js';
 
 vi.mock('../../repositories/user-repository.js', () => ({
   createUser: vi.fn(),
   findUserByEmail: vi.fn(),
+  findUserById: vi.fn(),
 }));
 
 vi.mock('bcryptjs', () => ({
@@ -26,6 +33,7 @@ vi.mock('bcryptjs', () => ({
 }));
 
 const findUserByEmailMock = vi.mocked(findUserByEmail);
+const findUserByIdMock = vi.mocked(findUserById);
 const createUserMock = vi.mocked(createUser);
 const bcryptHashMock = vi.mocked(
   bcrypt.hash as (
@@ -317,5 +325,72 @@ describe('loginUser', () => {
 
     expect(findUserByEmailMock).not.toHaveBeenCalled();
     expect(bcryptCompareMock).not.toHaveBeenCalled();
+  });
+});
+
+// Agrupa os testes responsáveis por recuperar
+// os dados atuais do usuário autenticado.
+describe('getAuthenticatedUser', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que um usuário existente e ativo
+  // tenha somente seus dados seguros retornados.
+  it('deve retornar o usuário autenticado', async () => {
+    findUserByIdMock.mockResolvedValue({
+      email: 'guilherme@example.com',
+      id: 1,
+      isActive: true,
+      name: 'Guilherme Nobre',
+      role: 'CUSTOMER',
+    });
+
+    const result = await getAuthenticatedUser(1);
+
+    expect(findUserByIdMock).toHaveBeenCalledWith(1);
+
+    expect(result).toEqual({
+      email: 'guilherme@example.com',
+      id: 1,
+      name: 'Guilherme Nobre',
+      role: 'CUSTOMER',
+    });
+
+    // Informações internas, como isActive, não precisam
+    // fazer parte do contrato público deste endpoint.
+    expect(result).not.toHaveProperty('isActive');
+  });
+
+  // Garante que um id inexistente não seja tratado
+  // como uma sessão autenticada válida.
+  it('deve rejeitar quando o usuário não for encontrado', async () => {
+    findUserByIdMock.mockResolvedValue(null);
+
+    await expect(
+      getAuthenticatedUser(999),
+    ).rejects.toMatchObject({
+      message: 'Usuário não encontrado.',
+      statusCode: 404,
+    });
+  });
+
+  // Garante que um usuário desativado perca o acesso,
+  // mesmo que ainda possua um JWT não expirado.
+  it('deve rejeitar quando o usuário estiver inativo', async () => {
+    findUserByIdMock.mockResolvedValue({
+      email: 'guilherme@example.com',
+      id: 1,
+      isActive: false,
+      name: 'Guilherme Nobre',
+      role: 'CUSTOMER',
+    });
+
+    await expect(
+      getAuthenticatedUser(1),
+    ).rejects.toMatchObject({
+      message: 'Usuário inativo.',
+      statusCode: 403,
+    });
   });
 });

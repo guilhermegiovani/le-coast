@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import {
+  getAuthenticatedUser,
   loginUser,
   registerUser,
 } from '../services/auth-service.js';
@@ -33,4 +34,18 @@ export async function login(
   });
 
   return response.status(200).json(result);
+}
+
+// Retorna os dados atuais do usuário autenticado.
+export async function me(
+  request: Request,
+  response: Response,
+) {
+  // O authMiddleware garante que request.user exista
+  // antes deste controller ser executado.
+  const userId = request.user!.id;
+
+  const user = await getAuthenticatedUser(userId);
+
+  return response.status(200).json(user);
 }

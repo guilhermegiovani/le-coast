@@ -17,6 +17,22 @@ export async function findUserByEmail(email: string) {
   });
 }
 
+// Busca um usuário pelo id.
+export async function findUserById(id: number) {
+  return prisma.user.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      email: true,
+      id: true,
+      isActive: true,
+      name: true,
+      role: true,
+    },
+  });
+}
+
 // Cria um novo usuário no banco.
 export async function createUser(data: CreateUserData) {
   return prisma.user.create({

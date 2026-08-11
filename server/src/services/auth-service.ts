@@ -4,7 +4,9 @@ import bcrypt from 'bcryptjs';
 import {
   createUser,
   findUserByEmail,
+  findUserById,
 } from '../repositories/user-repository.js';
+
 import type {
   LoginUserInput,
   LoginUserResult,
@@ -97,5 +99,28 @@ export async function loginUser(
       name: user.name,
       role: user.role,
     },
+  };
+}
+
+// Retorna os dados atuais do usuário autenticado.
+export async function getAuthenticatedUser(
+  userId: number,
+) {
+  const user = await findUserById(userId);
+
+  if (!user) {
+    throw new AppError('Usuário não encontrado.', 404);
+  }
+
+  // Usuários inativos não devem manter acesso à aplicação.
+  if (!user.isActive) {
+    throw new AppError('Usuário inativo.', 403);
+  }
+
+  return {
+    email: user.email,
+    id: user.id,
+    name: user.name,
+    role: user.role,
   };
 }
