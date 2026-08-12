@@ -16,13 +16,26 @@ import {
 import {
   getAuthenticatedUser,
   loginUser,
+  refreshSession,
   registerUser,
 } from '../../services/auth-service.js';
+
+import {
+  createRefreshToken,
+  findRefreshToken,
+  revokeRefreshToken,
+} from '../../services/refresh-token-service.js';
 
 vi.mock('../../repositories/user-repository.js', () => ({
   createUser: vi.fn(),
   findUserByEmail: vi.fn(),
   findUserById: vi.fn(),
+}));
+
+vi.mock('../../services/refresh-token-service.js', () => ({
+  createRefreshToken: vi.fn(),
+  findRefreshToken: vi.fn(),
+  revokeRefreshToken: vi.fn(),
 }));
 
 vi.mock('bcryptjs', () => ({
@@ -35,6 +48,19 @@ vi.mock('bcryptjs', () => ({
 const findUserByEmailMock = vi.mocked(findUserByEmail);
 const findUserByIdMock = vi.mocked(findUserById);
 const createUserMock = vi.mocked(createUser);
+
+const createRefreshTokenMock = vi.mocked(
+  createRefreshToken,
+);
+
+const findRefreshTokenMock = vi.mocked(
+  findRefreshToken,
+);
+
+const revokeRefreshTokenMock = vi.mocked(
+  revokeRefreshToken,
+);
+
 const bcryptHashMock = vi.mocked(
   bcrypt.hash as (
     data: string,
@@ -63,6 +89,16 @@ const ACTIVE_USER = {
 const VALID_LOGIN_INPUT = {
   email: 'guilherme@example.com',
   password: '12345678',
+};
+
+const VALID_STORED_REFRESH_TOKEN = {
+  createdAt: new Date(),
+  expiresAt: new Date(Date.now() + 60_000),
+  id: 10,
+  revokedAt: null,
+  tokenHash: 'hashed-refresh-token',
+  userId: 1,
+  user: ACTIVE_USER,
 };
 
 describe('registerUser', () => {
@@ -212,6 +248,13 @@ describe('registerUser', () => {
 describe('loginUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Define uma sessão renovável padrão para os testes
+    // em que o login chega até a criação do refresh token.
+    createRefreshTokenMock.mockResolvedValue({
+      expiresAt: new Date('2026-09-11T00:00:00.000Z'),
+      token: 'refresh-token',
+    });
   });
 
   // Garante que o e-mail seja normalizado antes da busca no banco.
@@ -242,6 +285,7 @@ describe('loginUser', () => {
 
     // Não existe motivo para comparar a senha se o usuário não existe.
     expect(bcryptCompareMock).not.toHaveBeenCalled();
+    expect(createRefreshTokenMock).not.toHaveBeenCalled();
   });
 
   // Garante que usuários inativos não possam autenticar.
@@ -260,6 +304,7 @@ describe('loginUser', () => {
 
     // A autenticação é interrompida antes da comparação da senha.
     expect(bcryptCompareMock).not.toHaveBeenCalled();
+    expect(createRefreshTokenMock).not.toHaveBeenCalled();
   });
 
   // Garante que uma senha incorreta não permita autenticação.
@@ -278,10 +323,11 @@ describe('loginUser', () => {
       '12345678',
       'hashed-password',
     );
+    expect(createRefreshTokenMock).not.toHaveBeenCalled();
   });
 
-  // Garante que credenciais corretas retornem somente
-  // os dados seguros necessários do usuário.
+  // Garante que credenciais corretas criem
+  // uma sessão autenticada completa.
   it('deve autenticar quando as credenciais estiverem corretas', async () => {
     findUserByEmailMock.mockResolvedValue(ACTIVE_USER);
     bcryptCompareMock.mockResolvedValue(true);
@@ -293,8 +339,13 @@ describe('loginUser', () => {
       'hashed-password',
     );
 
+    // O login deve criar uma sessão renovável
+    // associada ao usuário autenticado.
+    expect(createRefreshTokenMock).toHaveBeenCalledWith(1);
+
     expect(result).toEqual({
-      token: expect.any(String),
+      accessToken: expect.any(String),
+      refreshToken: 'refresh-token',
       user: {
         email: 'guilherme@example.com',
         id: 1,
@@ -303,10 +354,8 @@ describe('loginUser', () => {
       },
     });
 
-    // O hash da senha nunca deve fazer parte da resposta do login.
-    expect(result.user).not.toHaveProperty('passwordHash');
-
-    // O hash da senha nunca deve fazer parte da resposta do login.
+    // Dados sensíveis nunca devem fazer parte
+    // da resposta pública do login.
     expect(result.user).not.toHaveProperty('passwordHash');
   });
 
@@ -325,6 +374,7 @@ describe('loginUser', () => {
 
     expect(findUserByEmailMock).not.toHaveBeenCalled();
     expect(bcryptCompareMock).not.toHaveBeenCalled();
+    expect(createRefreshTokenMock).not.toHaveBeenCalled();
   });
 });
 
@@ -392,5 +442,130 @@ describe('getAuthenticatedUser', () => {
       message: 'Usuário inativo.',
       statusCode: 403,
     });
+  });
+});
+
+// Agrupa os testes relacionados à renovação da sessão.
+describe('refreshSession', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Define uma nova sessão renovável padrão
+    // para os cenários de renovação bem-sucedida.
+    createRefreshTokenMock.mockResolvedValue({
+      expiresAt: new Date(Date.now() + 60_000),
+      token: 'new-refresh-token',
+    });
+  });
+
+  // Garante que um refresh token válido seja
+  // rotacionado e gere uma nova sessão.
+  it('deve renovar a sessão com um refresh token válido', async () => {
+    findRefreshTokenMock.mockResolvedValue(
+      VALID_STORED_REFRESH_TOKEN,
+    );
+
+    const result = await refreshSession(
+      'old-refresh-token',
+    );
+
+    expect(findRefreshTokenMock).toHaveBeenCalledWith(
+      'old-refresh-token',
+    );
+
+    // O token atual deve ser revogado antes
+    // da emissão de uma nova sessão.
+    expect(revokeRefreshTokenMock).toHaveBeenCalledWith(10);
+
+    // Um novo refresh token deve ser criado
+    // para o mesmo usuário.
+    expect(createRefreshTokenMock).toHaveBeenCalledWith(1);
+
+    expect(result).toEqual({
+      accessToken: expect.any(String),
+      refreshToken: 'new-refresh-token',
+      user: {
+        email: 'guilherme@example.com',
+        id: 1,
+        name: 'Guilherme Nobre',
+        role: 'CUSTOMER',
+      },
+    });
+  });
+
+  // Garante que tokens inexistentes não possam
+  // criar uma nova sessão.
+  it('deve rejeitar um refresh token inexistente', async () => {
+    findRefreshTokenMock.mockResolvedValue(null);
+
+    await expect(
+      refreshSession('invalid-refresh-token'),
+    ).rejects.toMatchObject({
+      message: 'Refresh token inválido.',
+      statusCode: 401,
+    });
+
+    expect(revokeRefreshTokenMock).not.toHaveBeenCalled();
+    expect(createRefreshTokenMock).not.toHaveBeenCalled();
+  });
+
+  // Garante que um refresh token já revogado
+  // não possa ser reutilizado.
+  it('deve rejeitar um refresh token revogado', async () => {
+    findRefreshTokenMock.mockResolvedValue({
+      ...VALID_STORED_REFRESH_TOKEN,
+      revokedAt: new Date(),
+    });
+
+    await expect(
+      refreshSession('revoked-refresh-token'),
+    ).rejects.toMatchObject({
+      message: 'Refresh token inválido.',
+      statusCode: 401,
+    });
+
+    expect(revokeRefreshTokenMock).not.toHaveBeenCalled();
+    expect(createRefreshTokenMock).not.toHaveBeenCalled();
+  });
+
+  // Garante que tokens expirados não possam
+  // renovar uma sessão.
+  it('deve rejeitar um refresh token expirado', async () => {
+    findRefreshTokenMock.mockResolvedValue({
+      ...VALID_STORED_REFRESH_TOKEN,
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+
+    await expect(
+      refreshSession('expired-refresh-token'),
+    ).rejects.toMatchObject({
+      message: 'Refresh token expirado.',
+      statusCode: 401,
+    });
+
+    expect(revokeRefreshTokenMock).not.toHaveBeenCalled();
+    expect(createRefreshTokenMock).not.toHaveBeenCalled();
+  });
+
+  // Garante que usuários inativos não possam
+  // renovar sessões existentes.
+  it('deve rejeitar quando o usuário estiver inativo', async () => {
+    findRefreshTokenMock.mockResolvedValue({
+      ...VALID_STORED_REFRESH_TOKEN,
+      user: {
+        ...ACTIVE_USER,
+        isActive: false,
+      },
+    });
+
+    await expect(
+      refreshSession('refresh-token'),
+    ).rejects.toMatchObject({
+      message: 'Usuário inativo.',
+      statusCode: 403,
+    });
+
+    expect(revokeRefreshTokenMock).not.toHaveBeenCalled();
+    expect(createRefreshTokenMock).not.toHaveBeenCalled();
   });
 });

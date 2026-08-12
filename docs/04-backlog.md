@@ -148,7 +148,7 @@ Implementar autenticação e gerenciamento básico de contas de usuários.
 - [x] BK033 - Criar tabela de usuários
 - [x] BK034 - Criar endpoint de cadastro
 - [x] BK035 - Criar endpoint de login
-- [~] BK036 - Implementar autenticação JWT
+- [x] BK036 - Implementar autenticação JWT
 - [x] BK037 - Implementar renovação ou validação de sessão
 - [ ] BK038 - Implementar logout
 - [ ] BK039 - Implementar recuperação de senha
@@ -156,8 +156,8 @@ Implementar autenticação e gerenciamento básico de contas de usuários.
 - [ ] BK041 - Criar tela de Cadastro
 - [ ] BK042 - Criar tela de recuperação de senha
 - [ ] BK043 - Proteger rotas privadas
-- [ ] BK044 - Criar testes do fluxo de autenticação
-- [ ] BK045 - Validar segurança básica da autenticação
+- [~] BK044 - Criar testes do fluxo de autenticação
+- [~] BK045 - Validar segurança básica da autenticação
 
 ---
 

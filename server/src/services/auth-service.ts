@@ -20,6 +20,11 @@ import {
 } from '../validators/auth-validator.js';
 
 import { generateAccessToken } from '../lib/jwt.js';
+import {
+  createRefreshToken,
+  findRefreshToken,
+  revokeRefreshToken,
+} from './refresh-token-service.js';
 
 // Quantidade de rounds usada para gerar o hash da senha.
 const PASSWORD_SALT_ROUNDS = 12;
@@ -84,15 +89,22 @@ export async function loginUser(
     throw new AppError('E-mail ou senha inválidos.', 401);
   }
 
-  // Gera o token utilizado nas próximas requisições autenticadas.
-  const token = generateAccessToken({
+  // Gera o access token JWT usado para autenticar
+  // as próximas requisições da API.
+  const accessToken = generateAccessToken({
     id: user.id,
     role: user.role,
   });
 
-  // Retorna o token e somente os dados seguros do usuário.
+  // Cria o refresh token persistido e revogável
+  // utilizado para renovar a sessão no futuro.
+  const refreshToken = await createRefreshToken(user.id);
+
+  // Retorna os dados necessários para a camada HTTP.
+  // O controller decidirá como entregar cada token ao cliente.
   return {
-    token,
+    accessToken,
+    refreshToken: refreshToken.token,
     user: {
       email: user.email,
       id: user.id,
@@ -122,5 +134,83 @@ export async function getAuthenticatedUser(
     id: user.id,
     name: user.name,
     role: user.role,
+  };
+}
+
+// Renova uma sessão a partir de um refresh token válido.
+// O token antigo é revogado e uma nova sessão é criada.
+export async function refreshSession(
+  refreshTokenValue: string,
+) {
+  // Busca a sessão correspondente ao token recebido.
+  // A busca é feita pelo hash, nunca pelo token em texto puro.
+  const storedRefreshToken =
+    await findRefreshToken(refreshTokenValue);
+
+  if (!storedRefreshToken) {
+    throw new AppError(
+      'Refresh token inválido.',
+      401,
+    );
+  }
+
+  // Tokens já revogados não podem ser reutilizados.
+  if (storedRefreshToken.revokedAt) {
+    throw new AppError(
+      'Refresh token inválido.',
+      401,
+    );
+  }
+
+  // Tokens expirados também deixam de representar
+  // uma sessão válida.
+  if (
+    storedRefreshToken.expiresAt.getTime() <=
+    Date.now()
+  ) {
+    throw new AppError(
+      'Refresh token expirado.',
+      401,
+    );
+  }
+
+  // Usuários desativados não devem conseguir
+  // renovar uma sessão existente.
+  if (!storedRefreshToken.user.isActive) {
+    throw new AppError(
+      'Usuário inativo.',
+      403,
+    );
+  }
+
+  // Revoga o token atual antes de emitir outro.
+  // Isso implementa a rotação do refresh token.
+  await revokeRefreshToken(
+    storedRefreshToken.id,
+  );
+
+  // Cria um novo refresh token para substituir
+  // o token que acabou de ser revogado.
+  const newRefreshToken =
+    await createRefreshToken(
+      storedRefreshToken.user.id,
+    );
+
+  // Gera um novo access token curto com os
+  // dados atuais do usuário.
+  const accessToken = generateAccessToken({
+    id: storedRefreshToken.user.id,
+    role: storedRefreshToken.user.role,
+  });
+
+  return {
+    accessToken,
+    refreshToken: newRefreshToken.token,
+    user: {
+      email: storedRefreshToken.user.email,
+      id: storedRefreshToken.user.id,
+      name: storedRefreshToken.user.name,
+      role: storedRefreshToken.user.role,
+    },
   };
 }

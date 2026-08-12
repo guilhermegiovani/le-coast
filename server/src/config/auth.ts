@@ -1,4 +1,5 @@
 import 'dotenv/config';
+
 import type { StringValue } from 'ms';
 
 // Define o formato das configurações de autenticação.
@@ -6,6 +7,9 @@ type AuthConfig = {
   jwt: {
     expiresIn: StringValue | number;
     secret: string;
+  };
+  refreshToken: {
+    expiresInDays: number;
   };
 };
 
@@ -18,11 +22,29 @@ if (!jwtSecret) {
   );
 }
 
-// Centraliza as configurações utilizadas na autenticação JWT.
+// Converte a duração do refresh token para número.
+const refreshTokenExpiresInDays = Number(
+  process.env.REFRESH_TOKEN_EXPIRES_IN_DAYS ?? 30,
+);
+
+// Impede que uma configuração inválida seja aceita silenciosamente.
+if (
+  Number.isNaN(refreshTokenExpiresInDays) ||
+  refreshTokenExpiresInDays <= 0
+) {
+  throw new Error(
+    'REFRESH_TOKEN_EXPIRES_IN_DAYS deve ser um número positivo.',
+  );
+}
+
+// Centraliza as configurações utilizadas na autenticação.
 export const authConfig: AuthConfig = {
   jwt: {
     expiresIn: (process.env.JWT_EXPIRES_IN ??
-      '7d') as StringValue,
+      '15m') as StringValue,
     secret: jwtSecret,
+  },
+  refreshToken: {
+    expiresInDays: refreshTokenExpiresInDays,
   },
 };

@@ -49,6 +49,11 @@ model User {
   // uma coluna "addresses" na tabela users.
   addresses Address[]
 
+  // Relação 1:N:
+  // um usuário pode possuir várias sessões ativas,
+  // cada uma representada por um refresh token.
+  refreshTokens RefreshToken[]
+
   // Mantém o model como User no Prisma/TypeScript,
   // mas utiliza "users" como nome da tabela no PostgreSQL.
   @@map("users")
@@ -103,4 +108,41 @@ model Address {
   // Mantém o model como Address no Prisma/TypeScript,
   // mas utiliza "addresses" como nome da tabela no PostgreSQL.
   @@map("addresses")
+}
+
+// Representa uma sessão renovável de autenticação.
+// Guardamos somente o hash do refresh token no banco,
+// nunca o token original entregue ao cliente.
+model RefreshToken {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Usuário ao qual esta sessão pertence.
+  userId Int @map("user_id")
+
+  // Hash do refresh token.
+  // @unique impede dois registros de possuírem o mesmo token.
+  tokenHash String @unique @map("token_hash")
+
+  // Data limite em que este refresh token pode ser utilizado.
+  expiresAt DateTime @map("expires_at")
+
+  // Quando preenchido, significa que o token foi revogado
+  // e não pode mais ser usado para renovar a sessão.
+  revokedAt DateTime? @map("revoked_at")
+
+  // Registra quando esta sessão foi criada.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Define a relação com o usuário dono desta sessão.
+  //
+  // onDelete: Cascade remove os refresh tokens caso
+  // o usuário seja realmente excluído do banco.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Melhora consultas das sessões pertencentes a um usuário.
+  @@index([userId])
+  // Mantém RefreshToken no Prisma/TypeScript,
+  // mas utiliza refresh_tokens no PostgreSQL.
+  @@map("refresh_tokens")
 }

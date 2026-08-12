@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express, { type Express } from 'express';
+import cookieParser from 'cookie-parser';
 
 import { errorHandler } from './middlewares/error-handler.js';
 import { authRoutes } from './routes/auth-routes.js';
@@ -8,6 +9,7 @@ export const app: Express = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/', (_request, response) => {
   response.status(200).json({

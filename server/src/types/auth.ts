@@ -17,7 +17,8 @@ export type LoginUserInput = {
 };
 
 export type LoginUserResult = {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   user: {
     email: string;
     id: number;
