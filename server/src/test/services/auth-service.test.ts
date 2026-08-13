@@ -16,6 +16,7 @@ import {
 import {
   getAuthenticatedUser,
   loginUser,
+  logoutUser,
   refreshSession,
   registerUser,
 } from '../../services/auth-service.js';
@@ -567,5 +568,53 @@ describe('refreshSession', () => {
 
     expect(revokeRefreshTokenMock).not.toHaveBeenCalled();
     expect(createRefreshTokenMock).not.toHaveBeenCalled();
+  });
+});
+
+// Agrupa os testes relacionados ao encerramento da sessão.
+describe('logoutUser', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que uma sessão ativa seja revogada.
+  it('deve revogar o refresh token quando a sessão existir', async () => {
+    findRefreshTokenMock.mockResolvedValue({
+      ...VALID_STORED_REFRESH_TOKEN,
+      revokedAt: null,
+    });
+
+    await logoutUser('refresh-token');
+
+    expect(findRefreshTokenMock).toHaveBeenCalledWith(
+      'refresh-token',
+    );
+
+    expect(revokeRefreshTokenMock).toHaveBeenCalledWith(10);
+  });
+
+  // Garante que logout de uma sessão inexistente
+  // continue sendo tratado como sucesso.
+  it('não deve lançar erro quando a sessão não existir', async () => {
+    findRefreshTokenMock.mockResolvedValue(null);
+
+    await expect(
+      logoutUser('refresh-token'),
+    ).resolves.toBeUndefined();
+
+    expect(revokeRefreshTokenMock).not.toHaveBeenCalled();
+  });
+
+  // Garante que uma sessão já revogada não seja
+  // processada novamente.
+  it('não deve revogar novamente uma sessão já encerrada', async () => {
+    findRefreshTokenMock.mockResolvedValue({
+      ...VALID_STORED_REFRESH_TOKEN,
+      revokedAt: new Date(),
+    });
+
+    await logoutUser('refresh-token');
+
+    expect(revokeRefreshTokenMock).not.toHaveBeenCalled();
   });
 });

@@ -214,3 +214,31 @@ export async function refreshSession(
     },
   };
 }
+
+// Encerra a sessão associada ao refresh token informado.
+export async function logoutUser(
+  refreshTokenValue: string,
+) {
+  // Localiza a sessão pelo hash do refresh token.
+  // O token original nunca é armazenado no banco.
+  const storedRefreshToken =
+    await findRefreshToken(refreshTokenValue);
+
+  // Se a sessão não existir, ela já pode ser considerada
+  // encerrada. Não precisamos transformar isso em erro.
+  if (!storedRefreshToken) {
+    return;
+  }
+
+  // Se o token já foi revogado, o resultado desejado
+  // também já foi alcançado: a sessão está encerrada.
+  if (storedRefreshToken.revokedAt) {
+    return;
+  }
+
+  // Revoga a sessão no servidor para impedir que
+  // esse refresh token seja usado novamente.
+  await revokeRefreshToken(
+    storedRefreshToken.id,
+  );
+}

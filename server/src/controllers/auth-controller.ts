@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import {
   getAuthenticatedUser,
   loginUser,
+  logoutUser,
   refreshSession,
   registerUser,
 } from '../services/auth-service.js';
@@ -117,4 +118,30 @@ export async function refresh(
     accessToken: result.accessToken,
     user: result.user,
   });
+}
+
+// Encerra a sessão renovável associada ao refresh token
+// e remove o cookie utilizado para renovação.
+export async function logout(
+  request: Request,
+  response: Response,
+) {
+  const refreshToken = request.cookies.refreshToken;
+
+  // Se o cookie existir, tenta revogar a sessão correspondente.
+  // Se não existir, o estado desejado já é "deslogado".
+  if (refreshToken) {
+    await logoutUser(refreshToken);
+  }
+
+  // Remove o refresh token do navegador.
+  // As opções precisam ser compatíveis com as usadas na criação
+  // do cookie para garantir que ele seja removido corretamente.
+  response.clearCookie('refreshToken', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
+
+  return response.status(204).send();
 }

@@ -357,3 +357,60 @@ describe('POST /auth/refresh', () => {
     expect(createRefreshTokenMock).not.toHaveBeenCalled();
   });
 });
+
+// Agrupa os testes HTTP do encerramento da sessão.
+describe('POST /auth/logout', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que uma sessão ativa seja revogada
+  // e o cookie de refresh token seja removido.
+  it('deve encerrar a sessão e limpar o cookie', async () => {
+    findRefreshTokenMock.mockResolvedValue({
+      ...VALID_STORED_REFRESH_TOKEN,
+      revokedAt: null,
+    });
+
+    const response = await request(app)
+      .post('/auth/logout')
+      .set(
+        'Cookie',
+        'refreshToken=refresh-token',
+      )
+      .expect(204);
+
+    expect(findRefreshTokenMock).toHaveBeenCalledWith(
+      'refresh-token',
+    );
+
+    expect(revokeRefreshTokenMock).toHaveBeenCalledWith(10);
+
+    const cookies = response.headers['set-cookie'];
+
+    expect(cookies).toBeDefined();
+
+    // O cookie deve ser reenviado com expiração imediata
+    // para ser removido pelo navegador.
+    expect(cookies?.[0]).toContain('refreshToken=');
+    expect(cookies?.[0]).toContain('Expires=');
+  });
+
+  // Garante que logout sem cookie também seja aceito,
+  // mantendo o comportamento idempotente.
+  it('deve retornar 204 mesmo sem refresh token', async () => {
+    const response = await request(app)
+      .post('/auth/logout')
+      .expect(204);
+
+    expect(findRefreshTokenMock).not.toHaveBeenCalled();
+    expect(revokeRefreshTokenMock).not.toHaveBeenCalled();
+
+    const cookies = response.headers['set-cookie'];
+
+    // Mesmo sem sessão ativa, o servidor tenta remover
+    // qualquer cookie residual do navegador.
+    expect(cookies).toBeDefined();
+    expect(cookies?.[0]).toContain('refreshToken=');
+  });
+});

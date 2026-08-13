@@ -150,7 +150,7 @@ Implementar autenticação e gerenciamento básico de contas de usuários.
 - [x] BK035 - Criar endpoint de login
 - [x] BK036 - Implementar autenticação JWT
 - [x] BK037 - Implementar renovação ou validação de sessão
-- [ ] BK038 - Implementar logout
+- [x] BK038 - Implementar logout
 - [ ] BK039 - Implementar recuperação de senha
 - [ ] BK040 - Criar tela de Login
 - [ ] BK041 - Criar tela de Cadastro
