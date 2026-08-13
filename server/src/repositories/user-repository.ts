@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import type { UserRole } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
 
 type CreateUserData = {
   email: string;
@@ -49,6 +50,24 @@ export async function createUser(data: CreateUserData) {
       id: true,
       name: true,
       role: true,
+    },
+  });
+}
+
+// Atualiza o hash da senha de um usuário.
+// Quando um client transacional é informado, a operação
+// participa da mesma transação das demais alterações.
+export async function updateUserPassword(
+  userId: number,
+  passwordHash: string,
+  client: Prisma.TransactionClient = prisma,
+) {
+  return client.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      passwordHash,
     },
   });
 }

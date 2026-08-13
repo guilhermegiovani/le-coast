@@ -4,7 +4,7 @@ import {
   it,
 } from 'vitest';
 
-import { validateLoginInput, validateRegisterInput } from '../../validators/auth-validator.js';
+import { validateForgotPasswordInput, validateLoginInput, validateRegisterInput } from '../../validators/auth-validator.js';
 
 const VALID_INPUT = {
   email: 'guilherme@example.com',
@@ -146,5 +146,31 @@ describe('validateLoginInput', () => {
         statusCode: 400,
       });
     }
+  });
+});
+
+// Agrupa os testes da validação
+// da solicitação de recuperação de senha.
+describe('validateForgotPasswordInput', () => {
+  it('não deve lançar erro para um e-mail válido', () => {
+    expect(() =>
+      validateForgotPasswordInput(
+        'guilherme@example.com',
+      ),
+    ).not.toThrow();
+  });
+
+  it('deve exigir o e-mail', () => {
+    expect(() =>
+      validateForgotPasswordInput('   '),
+    ).toThrow('Informe seu e-mail.');
+  });
+
+  it('deve rejeitar um e-mail inválido', () => {
+    expect(() =>
+      validateForgotPasswordInput(
+        'email-invalido',
+      ),
+    ).toThrow('Informe um e-mail válido.');
   });
 });

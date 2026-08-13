@@ -7,6 +7,7 @@ import {
   refreshSession,
   registerUser,
 } from '../services/auth-service.js';
+import { requestPasswordReset, resetPassword } from '../services/password-reset-service.js';
 import { authConfig } from '../config/auth.js';
 import { AppError } from '../errors/app-error.js';
 
@@ -144,4 +145,48 @@ export async function logout(
   });
 
   return response.status(204).send();
+}
+
+// Recebe uma solicitação de recuperação de senha.
+// A resposta é sempre a mesma para evitar revelar
+// se existe ou não uma conta associada ao e-mail informado.
+export async function forgotPassword(
+  request: Request,
+  response: Response,
+) {
+  const { email } = request.body;
+
+  await requestPasswordReset(email);
+
+  // A mensagem é propositalmente genérica.
+  // Isso reduz risco de enumeração de usuários.
+  return response.status(200).json({
+    message:
+      'Se existir uma conta associada a este e-mail, enviaremos as instruções para redefinição da senha.',
+  });
+}
+
+// Redefine a senha do usuário a partir de um
+// token de recuperação válido.
+export async function resetPasswordController(
+  request: Request,
+  response: Response,
+) {
+  const { password, token } = request.body;
+
+  // O service é responsável por validar o token,
+  // aplicar as regras da nova senha e executar
+  // todas as alterações dentro da transação.
+  await resetPassword(
+    token,
+    password,
+  );
+
+  // Após a redefinição, todas as sessões renováveis
+  // do usuário são revogadas. Por isso, ele deverá
+  // realizar login novamente.
+  return response.status(200).json({
+    message:
+      'Senha redefinida com sucesso. Faça login novamente.',
+  });
 }

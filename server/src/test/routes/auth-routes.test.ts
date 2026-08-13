@@ -21,6 +21,11 @@ import {
   findRefreshToken,
   revokeRefreshToken,
 } from '../../services/refresh-token-service.js';
+import {
+  requestPasswordReset,
+  resetPassword,
+} from '../../services/password-reset-service.js';
+import { AppError } from '../../errors/app-error.js';
 
 // Substitui somente o acesso ao banco.
 // Simula o acesso aos usuários sem utilizar o banco real.
@@ -36,6 +41,13 @@ vi.mock('../../services/refresh-token-service.js', () => ({
   createRefreshToken: vi.fn(),
   findRefreshToken: vi.fn(),
   revokeRefreshToken: vi.fn(),
+}));
+
+// Simula o fluxo de recuperação de senha sem
+// executar alterações reais no banco durante os testes HTTP.
+vi.mock('../../services/password-reset-service.js', () => ({
+  requestPasswordReset: vi.fn(),
+  resetPassword: vi.fn(),
 }));
 
 // Simula operações do bcrypt para controlar
@@ -60,6 +72,14 @@ const findRefreshTokenMock = vi.mocked(
 
 const revokeRefreshTokenMock = vi.mocked(
   revokeRefreshToken,
+);
+
+const requestPasswordResetMock = vi.mocked(
+  requestPasswordReset,
+);
+
+const resetPasswordMock = vi.mocked(
+  resetPassword,
 );
 
 const bcryptCompareMock = vi.mocked(
@@ -412,5 +432,158 @@ describe('POST /auth/logout', () => {
     // qualquer cookie residual do navegador.
     expect(cookies).toBeDefined();
     expect(cookies?.[0]).toContain('refreshToken=');
+  });
+});
+
+// Agrupa os testes HTTP da solicitação
+// de recuperação de senha.
+describe('POST /auth/forgot-password', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que a resposta pública seja a mesma
+  // quando existe uma conta associada ao e-mail.
+  it('deve retornar uma mensagem genérica quando o usuário existir', async () => {
+    requestPasswordResetMock.mockResolvedValue({
+      email: 'guilherme@example.com',
+      expiresAt: new Date(),
+      token: 'reset-token',
+    });
+
+    const response = await request(app)
+      .post('/auth/forgot-password')
+      .send({
+        email: 'guilherme@example.com',
+      })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      message:
+        'Se existir uma conta associada a este e-mail, enviaremos as instruções para redefinição da senha.',
+    });
+
+    expect(requestPasswordResetMock).toHaveBeenCalledWith(
+      'guilherme@example.com',
+    );
+  });
+
+  // Garante que a mesma resposta seja devolvida
+  // quando não existe uma conta associada ao e-mail.
+  it('deve retornar a mesma mensagem quando o usuário não existir', async () => {
+    requestPasswordResetMock.mockResolvedValue(null);
+
+    const response = await request(app)
+      .post('/auth/forgot-password')
+      .send({
+        email: 'naoexiste@example.com',
+      })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      message:
+        'Se existir uma conta associada a este e-mail, enviaremos as instruções para redefinição da senha.',
+    });
+  });
+});
+
+// Agrupa os testes HTTP da redefinição de senha.
+describe('POST /auth/reset-password', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que uma redefinição válida conclua
+  // o fluxo e informe que um novo login é necessário.
+  it('deve redefinir a senha com sucesso', async () => {
+    resetPasswordMock.mockResolvedValue(undefined);
+
+    const response = await request(app)
+      .post('/auth/reset-password')
+      .send({
+        password: 'novaSenha123',
+        token: 'valid-reset-token',
+      })
+      .expect(200);
+
+    expect(resetPasswordMock).toHaveBeenCalledWith(
+      'valid-reset-token',
+      'novaSenha123',
+    );
+
+    expect(response.body).toEqual({
+      message:
+        'Senha redefinida com sucesso. Faça login novamente.',
+    });
+  });
+
+  // Garante que um token inválido seja convertido
+  // em uma resposta HTTP apropriada pelo errorHandler.
+  it('deve retornar 401 quando o token for inválido', async () => {
+    resetPasswordMock.mockRejectedValue(
+      new AppError(
+        'Token de recuperação inválido.',
+        401,
+      ),
+    );
+
+    const response = await request(app)
+      .post('/auth/reset-password')
+      .send({
+        password: 'novaSenha123',
+        token: 'invalid-reset-token',
+      })
+      .expect(401);
+
+    expect(response.body).toEqual({
+      message: 'Token de recuperação inválido.',
+    });
+  });
+
+  // Garante que tokens expirados também não
+  // possam autorizar uma nova senha.
+  it('deve retornar 401 quando o token estiver expirado', async () => {
+    resetPasswordMock.mockRejectedValue(
+      new AppError(
+        'Token de recuperação expirado.',
+        401,
+      ),
+    );
+
+    const response = await request(app)
+      .post('/auth/reset-password')
+      .send({
+        password: 'novaSenha123',
+        token: 'expired-reset-token',
+      })
+      .expect(401);
+
+    expect(response.body).toEqual({
+      message: 'Token de recuperação expirado.',
+    });
+  });
+
+  // Garante que erros de validação da nova senha
+  // também sejam propagados corretamente pela API.
+  it('deve retornar 400 quando a nova senha for inválida', async () => {
+    resetPasswordMock.mockRejectedValue(
+      new AppError(
+        'A senha deve conter pelo menos 8 caracteres.',
+        400,
+      ),
+    );
+
+    const response = await request(app)
+      .post('/auth/reset-password')
+      .send({
+        password: '1234567',
+        token: 'valid-reset-token',
+      })
+      .expect(400);
+
+    expect(response.body).toEqual({
+      message:
+        'A senha deve conter pelo menos 8 caracteres.',
+    });
   });
 });

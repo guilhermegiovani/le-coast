@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 
 import { prisma } from '../config/prisma.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import { authConfig } from '../config/auth.js';
 
 // Gera um token aleatório seguro para ser entregue ao cliente.
@@ -78,6 +79,27 @@ export async function revokeRefreshToken(
   return prisma.refreshToken.update({
     where: {
       id,
+    },
+    data: {
+      revokedAt: new Date(),
+    },
+  });
+}
+
+// Revoga todas as sessões renováveis ativas
+// pertencentes ao usuário informado.
+//
+// Quando um client transacional é recebido,
+// a operação participa da mesma transação
+// das demais alterações sensíveis.
+export async function revokeAllRefreshTokens(
+  userId: number,
+  client: Prisma.TransactionClient = prisma,
+) {
+  return client.refreshToken.updateMany({
+    where: {
+      userId,
+      revokedAt: null,
     },
     data: {
       revokedAt: new Date(),

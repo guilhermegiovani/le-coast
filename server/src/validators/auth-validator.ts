@@ -64,3 +64,24 @@ export function validateLoginInput(
     throw new AppError('Informe sua senha.', 400);
   }
 }
+
+// Valida o e-mail utilizado na solicitação
+// de recuperação de senha.
+export function validateForgotPasswordInput(
+  email: string,
+) {
+  const normalizedEmail = email.trim();
+
+  // Garante que o e-mail seja informado.
+  if (!normalizedEmail) {
+    throw new AppError('Informe seu e-mail.', 400);
+  }
+
+  // Valida a estrutura básica esperada
+  // para um endereço de e-mail.
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(normalizedEmail)) {
+    throw new AppError('Informe um e-mail válido.', 400);
+  }
+}

@@ -54,6 +54,10 @@ model User {
   // cada uma representada por um refresh token.
   refreshTokens RefreshToken[]
 
+  // Um usuário pode possuir diferentes solicitações de
+  // recuperação ao longo do tempo, mantendo seu histórico.
+  passwordResetTokens PasswordResetToken[]
+
   // Mantém o model como User no Prisma/TypeScript,
   // mas utiliza "users" como nome da tabela no PostgreSQL.
   @@map("users")
@@ -145,4 +149,46 @@ model RefreshToken {
   // Mantém RefreshToken no Prisma/TypeScript,
   // mas utiliza refresh_tokens no PostgreSQL.
   @@map("refresh_tokens")
+}
+
+// Representa um token temporário utilizado para redefinir
+// a senha de um usuário que perdeu acesso à conta.
+model PasswordResetToken {
+  // Identificador único do token de recuperação.
+  id Int @id @default(autoincrement())
+
+  // Usuário ao qual a solicitação de recuperação pertence.
+  userId Int @map("user_id")
+
+  // Armazena somente o hash do token enviado ao usuário.
+  // Assim, um vazamento do banco não expõe diretamente
+  // tokens válidos de redefinição de senha.
+  tokenHash String @unique @map("token_hash")
+
+  // Define até quando o token pode ser utilizado.
+  // Tokens de recuperação devem possuir vida curta
+  // por permitirem a alteração de uma credencial sensível.
+  expiresAt DateTime @map("expires_at")
+
+  // Registra quando o token foi utilizado.
+  // Depois de preenchido, o mesmo token não poderá
+  // ser usado novamente para redefinir a senha.
+  usedAt DateTime? @map("used_at")
+
+  // Mantém o momento em que a solicitação foi criada.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relaciona o token ao usuário que solicitou
+  // a recuperação da senha.
+  //
+  // Cascade garante que tokens temporários também sejam
+  // removidos caso o usuário seja excluído definitivamente.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Facilita consultas dos tokens pertencentes
+  // a determinado usuário.
+  @@index([userId])
+  // Mantém PascalCase no Prisma/TypeScript e
+  // snake_case diretamente no PostgreSQL.
+  @@map("password_reset_tokens")
 }
