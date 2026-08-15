@@ -151,7 +151,7 @@ Implementar autenticação e gerenciamento básico de contas de usuários.
 - [x] BK036 - Implementar autenticação JWT
 - [x] BK037 - Implementar renovação ou validação de sessão
 - [x] BK038 - Implementar logout
-- [ ] BK039 - Implementar recuperação de senha
+- [x] BK039 - Implementar recuperação de senha
 - [ ] BK040 - Criar tela de Login
 - [ ] BK041 - Criar tela de Cadastro
 - [ ] BK042 - Criar tela de recuperação de senha

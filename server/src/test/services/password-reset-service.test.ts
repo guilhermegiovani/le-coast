@@ -21,6 +21,7 @@ import {
   resetPassword,
 } from '../../services/password-reset-service.js';
 import { revokeAllRefreshTokens } from '../../services/refresh-token-service.js';
+import { sendPasswordResetEmail } from '../../services/email-service.js';
 
 // Mocka o repository de usuários para não acessar
 // o banco real durante os testes unitários.
@@ -62,6 +63,12 @@ vi.mock('bcryptjs', () => ({
   },
 }));
 
+// Simula o envio de e-mail para não realizar
+// chamadas reais ao Resend durante os testes.
+vi.mock('../../services/email-service.js', () => ({
+  sendPasswordResetEmail: vi.fn(),
+}));
+
 const findUserByEmailMock = vi.mocked(findUserByEmail);
 
 const updateUserPasswordMock = vi.mocked(
@@ -78,6 +85,10 @@ const markPasswordResetTokenAsUsedMock = vi.mocked(
 
 const revokeAllRefreshTokensMock = vi.mocked(
   revokeAllRefreshTokens,
+);
+
+const sendPasswordResetEmailMock = vi.mocked(
+  sendPasswordResetEmail,
 );
 
 const createPasswordResetTokenMock = vi.mocked(
@@ -127,6 +138,10 @@ const TRANSACTION_CLIENT = {
 describe('requestPasswordReset', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Simula um envio de e-mail bem-sucedido
+    // sem chamar o provedor externo.
+    sendPasswordResetEmailMock.mockResolvedValue(undefined);
   });
 
   // Garante que o e-mail seja normalizado
@@ -166,18 +181,20 @@ describe('requestPasswordReset', () => {
       userId: 1,
     });
 
-    const result = await requestPasswordReset(
+    await requestPasswordReset(
       'guilherme@example.com',
     );
-
-    expect(result).not.toBeNull();
-    expect(result?.email).toBe('guilherme@example.com');
-    expect(result?.token).toEqual(expect.any(String));
-    expect(result?.expiresAt).toBeInstanceOf(Date);
 
     expect(
       createPasswordResetTokenMock,
     ).toHaveBeenCalledTimes(1);
+
+    // O token original deve ser enviado somente
+    // para o e-mail associado à conta.
+    expect(sendPasswordResetEmailMock).toHaveBeenCalledWith(
+      'guilherme@example.com',
+      expect.any(String),
+    );
   });
 
   // Garante que somente o hash do token seja
@@ -194,25 +211,33 @@ describe('requestPasswordReset', () => {
       userId: 1,
     });
 
-    const result = await requestPasswordReset(
+    await requestPasswordReset(
       'guilherme@example.com',
     );
 
-    const call =
+    const databaseCall =
       createPasswordResetTokenMock.mock.calls[0]?.[0];
 
-    expect(call).toBeDefined();
+    const sentToken =
+      sendPasswordResetEmailMock.mock.calls[0]?.[1];
 
-    expect(call?.data.tokenHash).toEqual(
+    expect(databaseCall).toBeDefined();
+
+    // O token enviado ao usuário precisa existir
+    // e continuar sendo um valor original não hasheado.
+    expect(sentToken).toEqual(expect.any(String));
+
+    // O banco recebe somente o hash do token.
+    expect(databaseCall?.data.tokenHash).toEqual(
       expect.any(String),
     );
 
-    expect(call?.data.tokenHash).not.toBe(
-      result?.token,
+    expect(databaseCall?.data.tokenHash).not.toBe(
+      sentToken,
     );
 
     // SHA-256 em hexadecimal gera 64 caracteres.
-    expect(call?.data.tokenHash).toHaveLength(64);
+    expect(databaseCall?.data.tokenHash).toHaveLength(64);
   });
 
   // Garante que o token seja associado
@@ -258,29 +283,48 @@ describe('requestPasswordReset', () => {
 
     const beforeCreation = new Date();
 
-    const result = await requestPasswordReset(
+    await requestPasswordReset(
       'guilherme@example.com',
     );
 
+    const databaseCall =
+      createPasswordResetTokenMock.mock.calls[0]?.[0];
+
+    const expiresAt = databaseCall?.data.expiresAt;
+
+    expect(expiresAt).toBeInstanceOf(Date);
+
+    // Faz o narrowing do tipo para Date.
+    // Assim, além do teste em runtime, o TypeScript
+    // sabe que getTime() pode ser utilizado com segurança.
+    if (!(expiresAt instanceof Date)) {
+      throw new Error(
+        'A data de expiração deveria ser uma instância de Date.',
+      );
+    }
+
     expect(
-      result!.expiresAt.getTime(),
+      expiresAt.getTime(),
     ).toBeGreaterThan(beforeCreation.getTime());
   });
 
   // Garante que e-mails inexistentes não gerem
-  // token e não revelem a existência da conta.
+  // token nem revelem a existência da conta.
   it('não deve criar token quando o usuário não existir', async () => {
     findUserByEmailMock.mockResolvedValue(null);
 
-    const result = await requestPasswordReset(
-      'naoexiste@example.com',
-    );
-
-    expect(result).toBeNull();
+    await expect(
+      requestPasswordReset(
+        'naoexiste@example.com',
+      ),
+    ).resolves.toBeUndefined();
 
     expect(
       createPasswordResetTokenMock,
     ).not.toHaveBeenCalled();
+
+    // Sem usuário válido, nenhum e-mail deve ser enviado.
+    expect(sendPasswordResetEmailMock).not.toHaveBeenCalled();
   });
 
   // Garante que dados inválidos sejam rejeitados
@@ -298,6 +342,8 @@ describe('requestPasswordReset', () => {
     expect(
       createPasswordResetTokenMock,
     ).not.toHaveBeenCalled();
+
+    expect(sendPasswordResetEmailMock).not.toHaveBeenCalled();
   });
 });
 

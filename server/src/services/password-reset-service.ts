@@ -10,6 +10,7 @@ import { AppError } from '../errors/app-error.js';
 import { generatePasswordResetTokenValue, hashPasswordResetToken } from '../lib/password-reset-token.js';
 import { findPasswordResetToken, markPasswordResetTokenAsUsed } from '../repositories/password-reset-repository.js';
 import { revokeAllRefreshTokens } from './refresh-token-service.js';
+import { sendPasswordResetEmail } from './email-service.js';
 
 // Tempo de validade do token de recuperação em minutos.
 // Tokens desse tipo devem possuir vida curta por permitirem
@@ -42,7 +43,7 @@ export async function requestPasswordReset(
   // Se não existir usuário com esse e-mail, encerramos silenciosamente.
   // Isso evita permitir enumeração de contas através da API.
   if (!user) {
-    return null;
+    return;
   }
 
   const token = generatePasswordResetTokenValue();
@@ -57,13 +58,18 @@ export async function requestPasswordReset(
     },
   });
 
-  // O token original é retornado somente para a camada responsável
-  // por enviá-lo ao usuário. Ele nunca é salvo em texto puro.
-  return {
-    email: user.email,
-    expiresAt,
+  // Envia o token original somente para o endereço
+  // associado à conta. O banco continua armazenando
+  // exclusivamente o hash desse token.
+  await sendPasswordResetEmail(
+    user.email,
     token,
-  };
+  );
+
+  // O token não é retornado pela regra de negócio.
+  // Depois do envio por e-mail, ele não precisa
+  // circular por outras camadas da aplicação.
+  return;
 }
 
 // Redefine a senha a partir de um token de recuperação válido.

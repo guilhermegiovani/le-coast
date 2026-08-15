@@ -445,11 +445,9 @@ describe('POST /auth/forgot-password', () => {
   // Garante que a resposta pública seja a mesma
   // quando existe uma conta associada ao e-mail.
   it('deve retornar uma mensagem genérica quando o usuário existir', async () => {
-    requestPasswordResetMock.mockResolvedValue({
-      email: 'guilherme@example.com',
-      expiresAt: new Date(),
-      token: 'reset-token',
-    });
+    // O service conclui a solicitação sem retornar
+    // dados sensíveis para o controller.
+    requestPasswordResetMock.mockResolvedValue(undefined);
 
     const response = await request(app)
       .post('/auth/forgot-password')
@@ -471,7 +469,9 @@ describe('POST /auth/forgot-password', () => {
   // Garante que a mesma resposta seja devolvida
   // quando não existe uma conta associada ao e-mail.
   it('deve retornar a mesma mensagem quando o usuário não existir', async () => {
-    requestPasswordResetMock.mockResolvedValue(null);
+    // Quando o e-mail não pertence a uma conta,
+    // o service também encerra silenciosamente.
+    requestPasswordResetMock.mockResolvedValue(undefined);
 
     const response = await request(app)
       .post('/auth/forgot-password')
