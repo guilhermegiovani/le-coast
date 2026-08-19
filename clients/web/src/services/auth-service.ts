@@ -94,3 +94,28 @@ export async function refreshSession() {
 export type ApiErrorResponse = {
   message: string;
 };
+
+export type ForgotPasswordInput = {
+  email: string;
+};
+
+export type ForgotPasswordResponse = {
+  message: string;
+};
+
+// Solicita o envio de um e-mail de recuperação
+// de senha para o endereço informado.
+//
+// A resposta do backend é propositalmente genérica
+// para não revelar se uma conta existe ou não.
+export async function forgotPassword(
+  input: ForgotPasswordInput,
+) {
+  const response =
+    await api.post<ForgotPasswordResponse>(
+      '/auth/forgot-password',
+      input,
+    );
+
+  return response.data;
+}

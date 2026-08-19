@@ -8,6 +8,7 @@ import {
 
 import { api } from '@/lib/api';
 import {
+  forgotPassword,
   login,
   logout,
   refreshSession,
@@ -134,5 +135,31 @@ describe('auth-service', () => {
     expect(apiPostMock).toHaveBeenCalledWith(
       '/auth/logout',
     );
+  });
+
+  // Garante que a recuperação de senha envie
+  // o e-mail para o endpoint correto.
+  it('deve solicitar recuperação de senha', async () => {
+    const responseData = {
+      message:
+        'Se existir uma conta associada a este e-mail, enviaremos as instruções para redefinição da senha.',
+    };
+
+    apiPostMock.mockResolvedValue({
+      data: responseData,
+    });
+
+    const input = {
+      email: 'guilherme@example.com',
+    };
+
+    const result = await forgotPassword(input);
+
+    expect(apiPostMock).toHaveBeenCalledWith(
+      '/auth/forgot-password',
+      input,
+    );
+
+    expect(result).toEqual(responseData);
   });
 });
