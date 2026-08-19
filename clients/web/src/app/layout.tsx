@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { AnnouncementBar } from '@/components/layout/announcement-bar';
 import { Footer } from '@/components/layout/footer';
 import { Header } from '@/components/layout/header';
+import { AuthAppProvider } from '@/providers/auth-provider';
 
 import './globals.css';
 
@@ -34,12 +35,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-screen flex-col">
-        <AnnouncementBar />
-        <Header />
+        <AuthAppProvider>
+          <AnnouncementBar />
+          <Header />
 
-        <main className="flex-1">{children}</main>
+          <main className="flex-1">
+            {children}
+          </main>
 
-        <Footer />
+          <Footer />
+        </AuthAppProvider>
       </body>
     </html>
   );

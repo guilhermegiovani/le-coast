@@ -14,11 +14,32 @@ import {
 
 import { Header } from '@/components/layout/header';
 
-const mockedUsePathname = vi.fn();
+import {
+  usePathname,
+  useRouter,
+} from 'next/navigation';
 
+import { useAuth } from '@/contexts/auth-context';
+
+// Simula as APIs de navegação utilizadas
+// pelo Header e pelo HeaderActions.
 vi.mock('next/navigation', () => ({
-  usePathname: () => mockedUsePathname(),
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
 }));
+
+// Simula o contexto de autenticação utilizado
+// pelo HeaderActions renderizado dentro do Header.
+vi.mock('@/contexts/auth-context', () => ({
+  useAuth: vi.fn(),
+}));
+
+const usePathnameMock = vi.mocked(usePathname);
+const useRouterMock = vi.mocked(useRouter);
+const useAuthMock = vi.mocked(useAuth);
+
+const replaceMock = vi.fn();
+const logoutMock = vi.fn();
 
 // Representa os links que devem existir no menu mobile.
 const MOBILE_NAVIGATION_LINKS = [
@@ -60,7 +81,33 @@ const MOBILE_ACTIONS = [
 describe('Header', () => {
   // Define a Home como rota atual antes de cada teste.
   beforeEach(() => {
-    mockedUsePathname.mockReturnValue('/');
+    vi.clearAllMocks();
+
+    // Define a Home como rota atual
+    // antes de cada teste.
+    usePathnameMock.mockReturnValue('/');
+
+    // Fornece o router utilizado pelo HeaderActions
+    // sem executar navegações reais.
+    useRouterMock.mockReturnValue({
+      back: vi.fn(),
+      forward: vi.fn(),
+      prefetch: vi.fn(),
+      push: vi.fn(),
+      refresh: vi.fn(),
+      replace: replaceMock,
+    });
+
+    // Por padrão, os testes do Header utilizam
+    // um usuário deslogado.
+    useAuthMock.mockReturnValue({
+      accessToken: null,
+      isAuthenticated: false,
+      isLoading: false,
+      login: vi.fn(),
+      logout: logoutMock,
+      user: null,
+    });
   });
 
   // Garante que o Header utiliza o elemento semântico adequado.
