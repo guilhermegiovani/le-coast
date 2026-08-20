@@ -17,7 +17,7 @@ import {
     vi,
 } from 'vitest';
 
-import ResetPasswordPage from '@/app/(auth)/reset-password/page';
+import { ResetPasswordForm } from '@/app/(auth)/reset-password/reset-password-form';
 import { resetPassword } from '@/services/auth-service';
 
 // Simula o router e os parâmetros da URL
@@ -69,7 +69,7 @@ describe('ResetPasswordPage', () => {
     // Garante que os principais elementos
     // da página estejam disponíveis.
     it('deve renderizar o formulário de redefinição', () => {
-        render(<ResetPasswordPage />);
+        render(<ResetPasswordForm />);
 
         expect(
             screen.getByRole('heading', {
@@ -109,7 +109,7 @@ describe('ResetPasswordPage', () => {
             new URLSearchParams() as never,
         );
 
-        render(<ResetPasswordPage />);
+        render(<ResetPasswordForm />);
 
         await user.type(
             screen.getByLabelText('Nova senha'),
@@ -145,7 +145,7 @@ describe('ResetPasswordPage', () => {
     it('deve rejeitar quando as senhas não coincidirem', async () => {
         const user = userEvent.setup();
 
-        render(<ResetPasswordPage />);
+        render(<ResetPasswordForm />);
 
         await user.type(
             screen.getByLabelText('Nova senha'),
@@ -181,7 +181,7 @@ describe('ResetPasswordPage', () => {
     it('deve rejeitar senha com menos de 8 caracteres', async () => {
         const user = userEvent.setup();
 
-        render(<ResetPasswordPage />);
+        render(<ResetPasswordForm />);
 
         await user.type(
             screen.getByLabelText('Nova senha'),
@@ -221,7 +221,7 @@ describe('ResetPasswordPage', () => {
             message: SUCCESS_MESSAGE,
         });
 
-        render(<ResetPasswordPage />);
+        render(<ResetPasswordForm />);
 
         await user.type(
             screen.getByLabelText('Nova senha'),
@@ -258,7 +258,7 @@ describe('ResetPasswordPage', () => {
             message: SUCCESS_MESSAGE,
         });
 
-        render(<ResetPasswordPage />);
+        render(<ResetPasswordForm />);
 
         await user.type(
             screen.getByLabelText('Nova senha'),
@@ -303,7 +303,7 @@ describe('ResetPasswordPage', () => {
             'isAxiosError',
         ).mockReturnValue(true);
 
-        render(<ResetPasswordPage />);
+        render(<ResetPasswordForm />);
 
         await user.type(
             screen.getByLabelText('Nova senha'),
@@ -344,7 +344,7 @@ describe('ResetPasswordPage', () => {
             'isAxiosError',
         ).mockReturnValue(false);
 
-        render(<ResetPasswordPage />);
+        render(<ResetPasswordForm />);
 
         await user.type(
             screen.getByLabelText('Nova senha'),
@@ -391,7 +391,7 @@ describe('ResetPasswordPage', () => {
                 }),
         );
 
-        render(<ResetPasswordPage />);
+        render(<ResetPasswordForm />);
 
         await user.type(
             screen.getByLabelText('Nova senha'),
