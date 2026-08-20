@@ -13,6 +13,7 @@ import {
   logout,
   refreshSession,
   register,
+  resetPassword,
 } from '@/services/auth-service';
 
 // Simula a instância Axios utilizada pela aplicação.
@@ -157,6 +158,33 @@ describe('auth-service', () => {
 
     expect(apiPostMock).toHaveBeenCalledWith(
       '/auth/forgot-password',
+      input,
+    );
+
+    expect(result).toEqual(responseData);
+  });
+
+  // Garante que a redefinição de senha envie
+  // o token e a nova senha para o endpoint correto.
+  it('deve redefinir a senha', async () => {
+    const responseData = {
+      message:
+        'Senha redefinida com sucesso. Faça login novamente.',
+    };
+
+    apiPostMock.mockResolvedValue({
+      data: responseData,
+    });
+
+    const input = {
+      password: 'novaSenha123',
+      token: 'reset-token',
+    };
+
+    const result = await resetPassword(input);
+
+    expect(apiPostMock).toHaveBeenCalledWith(
+      '/auth/reset-password',
       input,
     );
 

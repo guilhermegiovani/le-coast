@@ -119,3 +119,29 @@ export async function forgotPassword(
 
   return response.data;
 }
+
+export type ResetPasswordInput = {
+  password: string;
+  token: string;
+};
+
+export type ResetPasswordResponse = {
+  message: string;
+};
+
+// Redefine a senha utilizando o token temporário
+// recebido pelo usuário através do e-mail.
+//
+// O token é enviado somente para o backend,
+// que valida expiração, uso único e vínculo com o usuário.
+export async function resetPassword(
+  input: ResetPasswordInput,
+) {
+  const response =
+    await api.post<ResetPasswordResponse>(
+      '/auth/reset-password',
+      input,
+    );
+
+  return response.data;
+}
