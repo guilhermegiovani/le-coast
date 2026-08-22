@@ -9,12 +9,15 @@ import {
 import {
   countUserAddresses,
   createAddress,
+  findAddressByIdAndUserId,
   findAddressesByUserId,
+  updateAddress,
 } from '../../repositories/address-repository.js';
 
 import {
   createUserAddress,
   listUserAddresses,
+  updateUserAddress,
 } from '../../services/address-service.js';
 
 // Simula o repository para que os testes
@@ -22,7 +25,9 @@ import {
 vi.mock('../../repositories/address-repository.js', () => ({
   countUserAddresses: vi.fn(),
   createAddress: vi.fn(),
+  findAddressByIdAndUserId: vi.fn(),
   findAddressesByUserId: vi.fn(),
+  updateAddress: vi.fn(),
 }));
 
 const countUserAddressesMock = vi.mocked(
@@ -35,6 +40,14 @@ const createAddressMock = vi.mocked(
 
 const findAddressesByUserIdMock = vi.mocked(
   findAddressesByUserId,
+);
+
+const findAddressByIdAndUserIdMock = vi.mocked(
+  findAddressByIdAndUserId,
+);
+
+const updateAddressMock = vi.mocked(
+  updateAddress,
 );
 
 const VALID_ADDRESS_INPUT = {
@@ -257,5 +270,139 @@ describe('listUserAddresses', () => {
     const result = await listUserAddresses(3);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('updateUserAddress', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const EXISTING_ADDRESS = {
+    city: 'Ribeirão Preto',
+    complement: 'Apto 12',
+    country: 'BR',
+    createdAt: new Date(),
+    id: 1,
+    isDefault: true,
+    name: 'Casa',
+    neighborhood: 'Centro',
+    number: '100',
+    state: 'SP',
+    street: 'Rua Exemplo',
+    updatedAt: new Date(),
+    userId: 3,
+    zipCode: '14000-000',
+  };
+
+  // Garante que somente os campos enviados
+  // sejam utilizados na atualização.
+  it('deve atualizar um endereço pertencente ao usuário', async () => {
+    findAddressByIdAndUserIdMock.mockResolvedValue(
+      EXISTING_ADDRESS,
+    );
+
+    updateAddressMock.mockResolvedValue({
+      ...EXISTING_ADDRESS,
+      name: 'Trabalho',
+    });
+
+    const result = await updateUserAddress(
+      3,
+      1,
+      {
+        name: 'Trabalho',
+      },
+    );
+
+    expect(
+      findAddressByIdAndUserIdMock,
+    ).toHaveBeenCalledWith(1, 3);
+
+    expect(updateAddressMock).toHaveBeenCalledWith(
+      1,
+      3,
+      {
+        name: 'Trabalho',
+      },
+    );
+
+    expect(result.name).toBe('Trabalho');
+  });
+
+  // Garante que os dados enviados no PATCH
+  // também sejam normalizados pelo Zod.
+  it('deve normalizar os campos enviados', async () => {
+    findAddressByIdAndUserIdMock.mockResolvedValue(
+      EXISTING_ADDRESS,
+    );
+
+    updateAddressMock.mockResolvedValue({
+      ...EXISTING_ADDRESS,
+      name: 'Trabalho',
+    });
+
+    await updateUserAddress(
+      3,
+      1,
+      {
+        name: '  Trabalho  ',
+      },
+    );
+
+    expect(updateAddressMock).toHaveBeenCalledWith(
+      1,
+      3,
+      {
+        name: 'Trabalho',
+      },
+    );
+  });
+
+  // Garante que um endereço inexistente ou pertencente
+  // a outro usuário não possa ser atualizado.
+  it('deve retornar erro quando o endereço não pertencer ao usuário', async () => {
+    findAddressByIdAndUserIdMock.mockResolvedValue(
+      null,
+    );
+
+    await expect(
+      updateUserAddress(
+        3,
+        10,
+        {
+          name: 'Trabalho',
+        },
+      ),
+    ).rejects.toMatchObject({
+      message: 'Endereço não encontrado.',
+      statusCode: 404,
+    });
+
+    expect(
+      updateAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que dados inválidos sejam rejeitados
+  // antes de consultar ou atualizar o banco.
+  it('não deve atualizar quando os dados forem inválidos', async () => {
+    await expect(
+      updateUserAddress(
+        3,
+        1,
+        {
+          name: '   ',
+        },
+      ),
+    ).rejects.toBeDefined();
+
+    expect(
+      findAddressByIdAndUserIdMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      updateAddressMock,
+    ).not.toHaveBeenCalled();
   });
 });

@@ -7,6 +7,7 @@ import { AppError } from '../errors/app-error.js';
 import {
   createUserAddress,
   listUserAddresses,
+  updateUserAddress,
 } from '../services/address-service.js';
 
 // Cria um novo endereço para o usuário autenticado.
@@ -52,4 +53,38 @@ export async function listAddressesController(
   );
 
   return response.status(200).json(addresses);
+}
+
+// Atualiza um endereço pertencente
+// ao usuário autenticado.
+export async function updateAddressController(
+  request: Request,
+  response: Response,
+) {
+  if (!request.user) {
+    throw new AppError(
+      'Usuário não autenticado.',
+      401,
+    );
+  }
+
+  const addressId = Number(request.params.id);
+
+  if (
+    !Number.isInteger(addressId) ||
+    addressId <= 0
+  ) {
+    throw new AppError(
+      'Endereço inválido.',
+      400,
+    );
+  }
+
+  const address = await updateUserAddress(
+    request.user.id,
+    addressId,
+    request.body,
+  );
+
+  return response.status(200).json(address);
 }

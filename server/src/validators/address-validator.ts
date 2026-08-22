@@ -53,3 +53,11 @@ export const createAddressSchema = z.object({
 // evitando manter tipo e validação separados.
 export type CreateAddressInput =
   z.infer<typeof createAddressSchema>;
+
+  // Na edição, todos os campos do endereço são opcionais,
+// mas os campos enviados continuam seguindo as mesmas validações.
+export const updateAddressSchema =
+  createAddressSchema.partial();
+
+export type UpdateAddressInput =
+  z.infer<typeof updateAddressSchema>;

@@ -1,6 +1,11 @@
 import { prisma } from '../config/prisma.js';
 
-import type { CreateAddressInput } from '../validators/address-validator.js';
+import type {
+  CreateAddressInput,
+  UpdateAddressInput,
+} from '../validators/address-validator.js';
+
+import { removeUndefined } from '../lib/remove-undefined.js';
 
 // Persiste um novo endereço associado
 // ao usuário autenticado.
@@ -65,5 +70,35 @@ export async function findAddressesByUserId(
         createdAt: 'asc',
       },
     ],
+  });
+}
+
+// Busca um endereço específico garantindo que
+// ele pertença ao usuário autenticado.
+export async function findAddressByIdAndUserId(
+  addressId: number,
+  userId: number,
+) {
+  return prisma.address.findFirst({
+    where: {
+      id: addressId,
+      userId,
+    },
+  });
+}
+
+// Atualiza somente os campos realmente enviados
+// na requisição, evitando propriedades com undefined.
+export async function updateAddress(
+  addressId: number,
+  userId: number,
+  input: UpdateAddressInput,
+) {
+  return prisma.address.update({
+    where: {
+      id: addressId,
+      userId,
+    },
+    data: removeUndefined(input),
   });
 }

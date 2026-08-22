@@ -4,7 +4,10 @@ import {
   it,
 } from 'vitest';
 
-import { createAddressSchema } from '../../validators/address-validator.js';
+import {
+  createAddressSchema,
+  updateAddressSchema,
+} from '../../validators/address-validator.js';
 
 const VALID_ADDRESS_INPUT = {
   city: 'Ribeirão Preto',
@@ -86,4 +89,52 @@ describe('createAddressSchema', () => {
       }
     },
   );
+});
+
+describe('updateAddressSchema', () => {
+  // Garante que o PATCH aceite apenas
+  // os campos enviados pelo usuário.
+  it('deve aceitar atualização parcial', () => {
+    const result = updateAddressSchema.safeParse({
+      name: 'Trabalho',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  // Garante que campos enviados no PATCH
+  // continuem sendo normalizados.
+  it('deve normalizar campos enviados', () => {
+    const result = updateAddressSchema.parse({
+      name: '  Trabalho  ',
+    });
+
+    expect(result.name).toBe('Trabalho');
+  });
+
+  // Garante que campos enviados com valor inválido
+  // continuem respeitando as regras do schema original.
+  it('deve rejeitar campo enviado com valor inválido', () => {
+    const result = updateAddressSchema.safeParse({
+      name: '   ',
+    });
+
+    expect(result.success).toBe(false);
+
+    if (!result.success) {
+      expect(
+        result.error.issues[0]?.message,
+      ).toBe(
+        'Informe um nome para o endereço.',
+      );
+    }
+  });
+
+  // Como PATCH é parcial, um objeto vazio
+  // é tecnicamente válido para o schema.
+  it('deve aceitar objeto vazio', () => {
+    const result = updateAddressSchema.safeParse({});
+
+    expect(result.success).toBe(true);
+  });
 });

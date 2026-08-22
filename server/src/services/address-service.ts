@@ -1,12 +1,17 @@
+import { AppError } from '../errors/app-error.js';
 import {
   countUserAddresses,
   createAddress,
+  findAddressByIdAndUserId,
   findAddressesByUserId,
+  updateAddress,
 } from '../repositories/address-repository.js';
 
 import {
-    createAddressSchema,
-    type CreateAddressInput,
+  createAddressSchema,
+  updateAddressSchema,
+  type CreateAddressInput,
+  type UpdateAddressInput,
 } from '../validators/address-validator.js';
 
 // Cria um novo endereço para o usuário autenticado.
@@ -41,4 +46,33 @@ export async function listUserAddresses(
   userId: number,
 ) {
   return findAddressesByUserId(userId);
+}
+
+// Atualiza um endereço pertencente ao usuário autenticado.
+export async function updateUserAddress(
+  userId: number,
+  addressId: number,
+  data: UpdateAddressInput,
+) {
+  const input = updateAddressSchema.parse(data);
+
+  const address = await findAddressByIdAndUserId(
+    addressId,
+    userId,
+  );
+
+  // Não diferenciamos endereço inexistente de endereço
+  // pertencente a outro usuário.
+  if (!address) {
+    throw new AppError(
+      'Endereço não encontrado.',
+      404,
+    );
+  }
+
+  return updateAddress(
+    addressId,
+    userId,
+    input,
+  );
 }

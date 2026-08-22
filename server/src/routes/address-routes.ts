@@ -3,6 +3,7 @@ import { Router, type Router as ExpressRouter, } from 'express';
 import {
   createAddressController,
   listAddressesController,
+  updateAddressController,
 } from '../controllers/address-controller.js';
 
 import { authMiddleware } from '../middlewares/auth-middleware.js';
@@ -20,3 +21,5 @@ addressRoutes.post('/', createAddressController);
 // Lista todos os endereços
 // pertencentes ao usuário autenticado.
 addressRoutes.get('/', listAddressesController);
+
+addressRoutes.patch('/:id', updateAddressController);
