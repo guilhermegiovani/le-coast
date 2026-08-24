@@ -8,11 +8,14 @@ import {
 } from 'vitest';
 
 import { app } from '../../app.js';
+
 import {
   createUserAddress,
+  deleteUserAddress,
   listUserAddresses,
   updateUserAddress,
 } from '../../services/address-service.js';
+
 import { generateAccessToken } from '../../lib/jwt.js';
 import { AppError } from '../../errors/app-error.js';
 
@@ -20,6 +23,7 @@ import { AppError } from '../../errors/app-error.js';
 // não acessem o banco real.
 vi.mock('../../services/address-service.js', () => ({
   createUserAddress: vi.fn(),
+  deleteUserAddress: vi.fn(),
   listUserAddresses: vi.fn(),
   updateUserAddress: vi.fn(),
 }));
@@ -34,6 +38,10 @@ const listUserAddressesMock = vi.mocked(
 
 const updateUserAddressMock = vi.mocked(
   updateUserAddress,
+);
+
+const deleteUserAddressMock = vi.mocked(
+  deleteUserAddress,
 );
 
 describe('POST /addresses', () => {
@@ -393,6 +401,110 @@ describe('PATCH /addresses/:id', () => {
         name: 'Trabalho',
       })
       .expect(404);
+
+    expect(response.body).toEqual({
+      message: 'Endereço não encontrado.',
+    });
+  });
+});
+
+describe('DELETE /addresses/:id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que a exclusão exija autenticação.
+  it('deve retornar 401 quando o token não for informado', async () => {
+    await request(app)
+      .delete('/addresses/1')
+      .expect(401);
+
+    expect(
+      deleteUserAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que ids inválidos sejam rejeitados
+  // antes de chegar ao service.
+  it('deve retornar 400 quando o id do endereço for inválido', async () => {
+    const accessToken = generateAccessToken({
+      id: 3,
+      role: 'CUSTOMER',
+    });
+
+    await request(app)
+      .delete('/addresses/abc')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .expect(400);
+
+    expect(
+      deleteUserAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que o usuário autenticado consiga
+  // excluir um endereço que pertence a ele.
+  it('deve excluir um endereço do usuário autenticado', async () => {
+    const accessToken = generateAccessToken({
+      id: 3,
+      role: 'CUSTOMER',
+    });
+
+    deleteUserAddressMock.mockResolvedValue(undefined);
+
+    const response = await request(app)
+      .delete('/addresses/1')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .expect(204);
+
+    // O service deve receber o userId vindo do JWT
+    // e o id informado no parâmetro da rota.
+    expect(
+      deleteUserAddressMock,
+    ).toHaveBeenCalledWith(
+      3,
+      1,
+    );
+
+    // Uma resposta 204 não deve possuir corpo.
+    expect(response.body).toEqual({});
+  });
+
+  // Garante que endereços inexistentes ou pertencentes
+  // a outro usuário retornem a mesma resposta.
+  it('deve retornar 404 quando o endereço não for encontrado', async () => {
+    const accessToken = generateAccessToken({
+      id: 3,
+      role: 'CUSTOMER',
+    });
+
+    deleteUserAddressMock.mockRejectedValue(
+      new AppError(
+        'Endereço não encontrado.',
+        404,
+      ),
+    );
+
+    const response = await request(app)
+      .delete('/addresses/10')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .expect(404);
+
+    expect(
+      deleteUserAddressMock,
+    ).toHaveBeenCalledWith(
+      3,
+      10,
+    );
 
     expect(response.body).toEqual({
       message: 'Endereço não encontrado.',

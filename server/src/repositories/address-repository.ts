@@ -102,3 +102,60 @@ export async function updateAddress(
     data: removeUndefined(input),
   });
 }
+
+// Exclui um endereço pertencente
+// ao usuário autenticado.
+export async function deleteAddress(
+  addressId: number,
+  userId: number,
+) {
+  return prisma.address.delete({
+    where: {
+      id: addressId,
+      userId,
+    },
+  });
+}
+
+// Exclui o endereço padrão e, caso ainda exista
+// outro endereço, define o mais antigo como novo padrão.
+//
+// A transação garante que as operações sejam
+// concluídas juntas ou revertidas em caso de falha.
+export async function deleteDefaultAddress(
+  addressId: number,
+  userId: number,
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.address.delete({
+      where: {
+        id: addressId,
+        userId,
+      },
+    });
+
+    // Após a exclusão, busca o endereço mais antigo
+    // que ainda pertence ao usuário.
+    const nextAddress = await tx.address.findFirst({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    // Se havia outro endereço, ele passa
+    // a ser o novo endereço padrão.
+    if (nextAddress) {
+      await tx.address.update({
+        where: {
+          id: nextAddress.id,
+        },
+        data: {
+          isDefault: true,
+        },
+      });
+    }
+  });
+}

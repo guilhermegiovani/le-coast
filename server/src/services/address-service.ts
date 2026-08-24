@@ -1,5 +1,7 @@
 import { AppError } from '../errors/app-error.js';
 import {
+  deleteAddress,
+  deleteDefaultAddress,
   countUserAddresses,
   createAddress,
   findAddressByIdAndUserId,
@@ -74,5 +76,42 @@ export async function updateUserAddress(
     addressId,
     userId,
     input,
+  );
+}
+
+// Exclui um endereço pertencente ao usuário autenticado.
+//
+// Se o endereço excluído for o padrão,
+// outro endereço será promovido automaticamente.
+export async function deleteUserAddress(
+  userId: number,
+  addressId: number,
+) {
+  const address = await findAddressByIdAndUserId(
+    addressId,
+    userId,
+  );
+
+  // Não diferencia endereço inexistente de um
+  // endereço pertencente a outro usuário.
+  if (!address) {
+    throw new AppError(
+      'Endereço não encontrado.',
+      404,
+    );
+  }
+
+  if (address.isDefault) {
+    await deleteDefaultAddress(
+      addressId,
+      userId,
+    );
+
+    return;
+  }
+
+  await deleteAddress(
+    addressId,
+    userId,
   );
 }

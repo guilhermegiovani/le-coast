@@ -2,6 +2,7 @@ import { Router, type Router as ExpressRouter, } from 'express';
 
 import {
   createAddressController,
+  deleteAddressController,
   listAddressesController,
   updateAddressController,
 } from '../controllers/address-controller.js';
@@ -23,3 +24,9 @@ addressRoutes.post('/', createAddressController);
 addressRoutes.get('/', listAddressesController);
 
 addressRoutes.patch('/:id', updateAddressController);
+
+// Exclui um endereço pertencente ao usuário autenticado.
+//
+// Caso seja o endereço padrão, o service garante que
+// outro endereço seja promovido quando necessário.
+addressRoutes.delete('/:id',deleteAddressController);

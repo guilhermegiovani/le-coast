@@ -9,6 +9,8 @@ import {
 import {
   countUserAddresses,
   createAddress,
+  deleteAddress,
+  deleteDefaultAddress,
   findAddressByIdAndUserId,
   findAddressesByUserId,
   updateAddress,
@@ -16,6 +18,7 @@ import {
 
 import {
   createUserAddress,
+  deleteUserAddress,
   listUserAddresses,
   updateUserAddress,
 } from '../../services/address-service.js';
@@ -25,6 +28,8 @@ import {
 vi.mock('../../repositories/address-repository.js', () => ({
   countUserAddresses: vi.fn(),
   createAddress: vi.fn(),
+  deleteAddress: vi.fn(),
+  deleteDefaultAddress: vi.fn(),
   findAddressByIdAndUserId: vi.fn(),
   findAddressesByUserId: vi.fn(),
   updateAddress: vi.fn(),
@@ -48,6 +53,14 @@ const findAddressByIdAndUserIdMock = vi.mocked(
 
 const updateAddressMock = vi.mocked(
   updateAddress,
+);
+
+const deleteAddressMock = vi.mocked(
+  deleteAddress,
+);
+
+const deleteDefaultAddressMock = vi.mocked(
+  deleteDefaultAddress,
 );
 
 const VALID_ADDRESS_INPUT = {
@@ -403,6 +416,120 @@ describe('updateUserAddress', () => {
 
     expect(
       updateAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+});
+
+describe('deleteUserAddress', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const DEFAULT_ADDRESS = {
+    city: 'Ribeirão Preto',
+    complement: null,
+    country: 'BR',
+    createdAt: new Date(),
+    id: 1,
+    isDefault: true,
+    name: 'Casa',
+    neighborhood: 'Centro',
+    number: '100',
+    state: 'SP',
+    street: 'Rua Exemplo',
+    updatedAt: new Date(),
+    userId: 3,
+    zipCode: '14000-000',
+  };
+
+  // Garante que um endereço não padrão
+  // seja excluído diretamente.
+  it('deve excluir um endereço que não seja padrão', async () => {
+    findAddressByIdAndUserIdMock.mockResolvedValue({
+      ...DEFAULT_ADDRESS,
+      id: 2,
+      isDefault: false,
+    });
+
+    deleteAddressMock.mockResolvedValue({
+      ...DEFAULT_ADDRESS,
+      id: 2,
+      isDefault: false,
+    });
+
+    await deleteUserAddress(
+      3,
+      2,
+    );
+
+    expect(
+      findAddressByIdAndUserIdMock,
+    ).toHaveBeenCalledWith(
+      2,
+      3,
+    );
+
+    expect(deleteAddressMock).toHaveBeenCalledWith(
+      2,
+      3,
+    );
+
+    expect(
+      deleteDefaultAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que a exclusão de um endereço padrão
+  // utilize a operação transacional do repository.
+  it('deve excluir endereço padrão e promover outro endereço', async () => {
+    findAddressByIdAndUserIdMock.mockResolvedValue(
+      DEFAULT_ADDRESS,
+    );
+
+    deleteDefaultAddressMock.mockResolvedValue(
+      undefined,
+    );
+
+    await deleteUserAddress(
+      3,
+      1,
+    );
+
+    expect(
+      deleteDefaultAddressMock,
+    ).toHaveBeenCalledWith(
+      1,
+      3,
+    );
+
+    expect(
+      deleteAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que um endereço inexistente ou pertencente
+  // a outro usuário não possa ser excluído.
+  it('deve retornar erro quando o endereço não pertencer ao usuário', async () => {
+    findAddressByIdAndUserIdMock.mockResolvedValue(
+      null,
+    );
+
+    await expect(
+      deleteUserAddress(
+        3,
+        10,
+      ),
+    ).rejects.toMatchObject({
+      message: 'Endereço não encontrado.',
+      statusCode: 404,
+    });
+
+    expect(
+      deleteAddressMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      deleteDefaultAddressMock,
     ).not.toHaveBeenCalled();
   });
 });
