@@ -6,6 +6,7 @@ import type {
 } from 'express';
 
 import { AppError } from '../errors/app-error.js';
+import { ZodError } from 'zod';
 
 // Centraliza o tratamento dos erros lançados pela aplicação.
 export const errorHandler: ErrorRequestHandler = (
@@ -22,6 +23,18 @@ export const errorHandler: ErrorRequestHandler = (
     });
 
     return;
+  }
+
+  // Converte erros de validação do Zod
+  // em uma resposta HTTP 400 amigável.
+  if (error instanceof ZodError) {
+    const firstIssue = error.issues[0];
+
+    return response.status(400).json({
+      message:
+        firstIssue?.message ??
+        'Dados inválidos.',
+    });
   }
 
   // Erros inesperados não devem expor detalhes internos ao cliente.

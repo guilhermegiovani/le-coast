@@ -1,0 +1,140 @@
+import {
+  describe,
+  expect,
+  it,
+} from 'vitest';
+
+import {
+  createAddressSchema,
+  updateAddressSchema,
+} from '../../validators/address-validator.js';
+
+const VALID_ADDRESS_INPUT = {
+  city: 'Ribeirão Preto',
+  complement: 'Apto 12',
+  country: 'BR',
+  name: 'Casa',
+  neighborhood: 'Centro',
+  number: '100',
+  state: 'SP',
+  street: 'Rua Exemplo',
+  zipCode: '14000-000',
+};
+
+describe('createAddressSchema', () => {
+  // Garante que um endereço completo e válido
+  // seja aceito pelo schema.
+  it('deve aceitar um endereço válido', () => {
+    const result = createAddressSchema.safeParse(
+      VALID_ADDRESS_INPUT,
+    );
+
+    expect(result.success).toBe(true);
+  });
+
+  // Garante que campos opcionais possam
+  // ser omitidos da requisição.
+  it('deve aceitar endereço sem campos opcionais', () => {
+    const {
+      complement: _complement,
+      country: _country,
+      ...input
+    } = VALID_ADDRESS_INPUT;
+
+    const result =
+      createAddressSchema.safeParse(input);
+
+    expect(result.success).toBe(true);
+  });
+
+  // Garante que espaços externos sejam removidos
+  // durante a validação.
+  it('deve normalizar os campos de texto', () => {
+    const result = createAddressSchema.parse({
+      ...VALID_ADDRESS_INPUT,
+      city: '  Ribeirão Preto  ',
+      name: '  Casa  ',
+      street: '  Rua Exemplo  ',
+    });
+
+    expect(result.city).toBe('Ribeirão Preto');
+    expect(result.name).toBe('Casa');
+    expect(result.street).toBe('Rua Exemplo');
+  });
+
+  // Garante que os campos obrigatórios não possam
+  // conter somente espaços em branco.
+  it.each([
+    ['city', 'Informe a cidade.'],
+    ['name', 'Informe um nome para o endereço.'],
+    ['neighborhood', 'Informe o bairro.'],
+    ['number', 'Informe o número.'],
+    ['state', 'Informe o estado.'],
+    ['street', 'Informe a rua.'],
+    ['zipCode', 'Informe o CEP.'],
+  ] as const)(
+    'deve rejeitar %s vazio',
+    (field, message) => {
+      const result = createAddressSchema.safeParse({
+        ...VALID_ADDRESS_INPUT,
+        [field]: '   ',
+      });
+
+      expect(result.success).toBe(false);
+
+      if (!result.success) {
+        expect(
+          result.error.issues[0]?.message,
+        ).toBe(message);
+      }
+    },
+  );
+});
+
+describe('updateAddressSchema', () => {
+  // Garante que o PATCH aceite apenas
+  // os campos enviados pelo usuário.
+  it('deve aceitar atualização parcial', () => {
+    const result = updateAddressSchema.safeParse({
+      name: 'Trabalho',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  // Garante que campos enviados no PATCH
+  // continuem sendo normalizados.
+  it('deve normalizar campos enviados', () => {
+    const result = updateAddressSchema.parse({
+      name: '  Trabalho  ',
+    });
+
+    expect(result.name).toBe('Trabalho');
+  });
+
+  // Garante que campos enviados com valor inválido
+  // continuem respeitando as regras do schema original.
+  it('deve rejeitar campo enviado com valor inválido', () => {
+    const result = updateAddressSchema.safeParse({
+      name: '   ',
+    });
+
+    expect(result.success).toBe(false);
+
+    if (!result.success) {
+      expect(
+        result.error.issues[0]?.message,
+      ).toBe(
+        'Informe um nome para o endereço.',
+      );
+    }
+  });
+
+  // Como PATCH é parcial, um objeto vazio
+  // é tecnicamente válido para o schema.
+  it('deve aceitar objeto vazio', () => {
+    const result = updateAddressSchema.safeParse({});
+
+    expect(result.success).toBe(true);
+  });
+});
