@@ -13,6 +13,7 @@ import {
   createUserAddress,
   deleteUserAddress,
   listUserAddresses,
+  setUserDefaultAddress,
   updateUserAddress,
 } from '../../services/address-service.js';
 
@@ -25,6 +26,7 @@ vi.mock('../../services/address-service.js', () => ({
   createUserAddress: vi.fn(),
   deleteUserAddress: vi.fn(),
   listUserAddresses: vi.fn(),
+  setUserDefaultAddress: vi.fn(),
   updateUserAddress: vi.fn(),
 }));
 
@@ -42,6 +44,10 @@ const updateUserAddressMock = vi.mocked(
 
 const deleteUserAddressMock = vi.mocked(
   deleteUserAddress,
+);
+
+const setUserDefaultAddressMock = vi.mocked(
+  setUserDefaultAddress,
 );
 
 describe('POST /addresses', () => {
@@ -501,6 +507,129 @@ describe('DELETE /addresses/:id', () => {
 
     expect(
       deleteUserAddressMock,
+    ).toHaveBeenCalledWith(
+      3,
+      10,
+    );
+
+    expect(response.body).toEqual({
+      message: 'Endereço não encontrado.',
+    });
+  });
+});
+
+describe('PATCH /addresses/:id/default', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que a alteração do endereço padrão
+  // exija autenticação.
+  it('deve retornar 401 quando o token não for informado', async () => {
+    await request(app)
+      .patch('/addresses/1/default')
+      .expect(401);
+
+    expect(
+      setUserDefaultAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que ids inválidos sejam rejeitados
+  // antes de chegar ao service.
+  it('deve retornar 400 quando o id do endereço for inválido', async () => {
+    const accessToken = generateAccessToken({
+      id: 3,
+      role: 'CUSTOMER',
+    });
+
+    await request(app)
+      .patch('/addresses/abc/default')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .expect(400);
+
+    expect(
+      setUserDefaultAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que o usuário autenticado consiga
+  // definir um de seus endereços como padrão.
+  it('deve definir um endereço como padrão', async () => {
+    const accessToken = generateAccessToken({
+      id: 3,
+      role: 'CUSTOMER',
+    });
+
+    setUserDefaultAddressMock.mockResolvedValue({
+      city: 'Ribeirão Preto',
+      complement: null,
+      country: 'BR',
+      createdAt: new Date(),
+      id: 2,
+      isDefault: true,
+      name: 'Trabalho',
+      neighborhood: 'Centro',
+      number: '200',
+      state: 'SP',
+      street: 'Rua Trabalho',
+      updatedAt: new Date(),
+      userId: 3,
+      zipCode: '14000-001',
+    });
+
+    const response = await request(app)
+      .patch('/addresses/2/default')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .expect(200);
+
+    // O userId deve vir do JWT e o addressId
+    // deve vir do parâmetro da rota.
+    expect(
+      setUserDefaultAddressMock,
+    ).toHaveBeenCalledWith(
+      3,
+      2,
+    );
+
+    expect(response.body).toMatchObject({
+      id: 2,
+      isDefault: true,
+      userId: 3,
+    });
+  });
+
+  // Garante que um endereço inexistente ou pertencente
+  // a outro usuário retorne a mesma resposta.
+  it('deve retornar 404 quando o endereço não for encontrado', async () => {
+    const accessToken = generateAccessToken({
+      id: 3,
+      role: 'CUSTOMER',
+    });
+
+    setUserDefaultAddressMock.mockRejectedValue(
+      new AppError(
+        'Endereço não encontrado.',
+        404,
+      ),
+    );
+
+    const response = await request(app)
+      .patch('/addresses/10/default')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .expect(404);
+
+    expect(
+      setUserDefaultAddressMock,
     ).toHaveBeenCalledWith(
       3,
       10,

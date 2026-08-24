@@ -270,6 +270,7 @@ Permitir que o cliente finalize uma compra e acompanhe seus pedidos.
 ### Tarefas
 
 - [x] BK073 - Criar tabela de endereços
+- [x] BK073A - Criar API de gerenciamento de endereços
 - [ ] BK074 - Criar tabela de pedidos
 - [ ] BK075 - Criar tabela de itens do pedido
 - [~] BK076 - Criar fluxo de checkout

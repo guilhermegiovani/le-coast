@@ -13,6 +13,7 @@ import {
   deleteDefaultAddress,
   findAddressByIdAndUserId,
   findAddressesByUserId,
+  setDefaultAddress,
   updateAddress,
 } from '../../repositories/address-repository.js';
 
@@ -20,6 +21,7 @@ import {
   createUserAddress,
   deleteUserAddress,
   listUserAddresses,
+  setUserDefaultAddress,
   updateUserAddress,
 } from '../../services/address-service.js';
 
@@ -32,6 +34,7 @@ vi.mock('../../repositories/address-repository.js', () => ({
   deleteDefaultAddress: vi.fn(),
   findAddressByIdAndUserId: vi.fn(),
   findAddressesByUserId: vi.fn(),
+  setDefaultAddress: vi.fn(),
   updateAddress: vi.fn(),
 }));
 
@@ -61,6 +64,10 @@ const deleteAddressMock = vi.mocked(
 
 const deleteDefaultAddressMock = vi.mocked(
   deleteDefaultAddress,
+);
+
+const setDefaultAddressMock = vi.mocked(
+  setDefaultAddress,
 );
 
 const VALID_ADDRESS_INPUT = {
@@ -530,6 +537,111 @@ describe('deleteUserAddress', () => {
 
     expect(
       deleteDefaultAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+});
+
+describe('setUserDefaultAddress', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const DEFAULT_ADDRESS = {
+    city: 'Ribeirão Preto',
+    complement: null,
+    country: 'BR',
+    createdAt: new Date(),
+    id: 1,
+    isDefault: true,
+    name: 'Casa',
+    neighborhood: 'Centro',
+    number: '100',
+    state: 'SP',
+    street: 'Rua Exemplo',
+    updatedAt: new Date(),
+    userId: 3,
+    zipCode: '14000-000',
+  };
+
+  const SECOND_ADDRESS = {
+    ...DEFAULT_ADDRESS,
+    id: 2,
+    isDefault: false,
+    name: 'Trabalho',
+  };
+
+  // Garante que um endereço pertencente ao usuário
+  // possa ser definido como novo padrão.
+  it('deve definir um endereço como padrão', async () => {
+    findAddressByIdAndUserIdMock.mockResolvedValue(
+      SECOND_ADDRESS,
+    );
+
+    setDefaultAddressMock.mockResolvedValue({
+      ...SECOND_ADDRESS,
+      isDefault: true,
+    });
+
+    const result = await setUserDefaultAddress(
+      3,
+      2,
+    );
+
+    expect(
+      findAddressByIdAndUserIdMock,
+    ).toHaveBeenCalledWith(
+      2,
+      3,
+    );
+
+    expect(
+      setDefaultAddressMock,
+    ).toHaveBeenCalledWith(
+      2,
+      3,
+    );
+
+    expect(result.isDefault).toBe(true);
+  });
+
+  // Garante que nenhuma escrita seja feita
+  // quando o endereço já for o padrão atual.
+  it('não deve alterar o banco quando o endereço já for padrão', async () => {
+    findAddressByIdAndUserIdMock.mockResolvedValue(
+      DEFAULT_ADDRESS,
+    );
+
+    const result = await setUserDefaultAddress(
+      3,
+      1,
+    );
+
+    expect(result).toEqual(DEFAULT_ADDRESS);
+
+    expect(
+      setDefaultAddressMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que um endereço inexistente ou pertencente
+  // a outro usuário não possa ser definido como padrão.
+  it('deve retornar erro quando o endereço não pertencer ao usuário', async () => {
+    findAddressByIdAndUserIdMock.mockResolvedValue(
+      null,
+    );
+
+    await expect(
+      setUserDefaultAddress(
+        3,
+        10,
+      ),
+    ).rejects.toMatchObject({
+      message: 'Endereço não encontrado.',
+      statusCode: 404,
+    });
+
+    expect(
+      setDefaultAddressMock,
     ).not.toHaveBeenCalled();
   });
 });

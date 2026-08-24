@@ -7,6 +7,7 @@ import {
   findAddressByIdAndUserId,
   findAddressesByUserId,
   updateAddress,
+  setDefaultAddress,
 } from '../repositories/address-repository.js';
 
 import {
@@ -111,6 +112,38 @@ export async function deleteUserAddress(
   }
 
   await deleteAddress(
+    addressId,
+    userId,
+  );
+}
+
+// Define um endereço pertencente ao usuário
+// autenticado como seu endereço padrão.
+export async function setUserDefaultAddress(
+  userId: number,
+  addressId: number,
+) {
+  const address = await findAddressByIdAndUserId(
+    addressId,
+    userId,
+  );
+
+  // Não diferencia um endereço inexistente de um
+  // endereço pertencente a outro usuário.
+  if (!address) {
+    throw new AppError(
+      'Endereço não encontrado.',
+      404,
+    );
+  }
+
+  // Se ele já for o endereço padrão, não precisamos
+  // realizar nenhuma alteração no banco.
+  if (address.isDefault) {
+    return address;
+  }
+
+  return setDefaultAddress(
     addressId,
     userId,
   );

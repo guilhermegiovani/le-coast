@@ -8,6 +8,7 @@ import {
   createUserAddress,
   deleteUserAddress,
   listUserAddresses,
+  setUserDefaultAddress,
   updateUserAddress,
 } from '../services/address-service.js';
 
@@ -131,4 +132,46 @@ export async function deleteAddressController(
   // 204 No Content indica que a exclusão foi concluída
   // com sucesso e não há conteúdo para retornar.
   return response.status(204).send();
+}
+
+// Define um endereço do usuário autenticado
+// como seu novo endereço padrão.
+export async function setDefaultAddressController(
+  request: Request,
+  response: Response,
+) {
+  // A rota utiliza authMiddleware, mas a guarda
+  // também garante a existência de request.user
+  // para o TypeScript.
+  if (!request.user) {
+    throw new AppError(
+      'Usuário não autenticado.',
+      401,
+    );
+  }
+
+  // Converte o id recebido pela URL para número.
+  const addressId = Number(request.params.id);
+
+  // Apenas ids inteiros positivos representam
+  // identificadores válidos de endereço.
+  if (
+    !Number.isInteger(addressId) ||
+    addressId <= 0
+  ) {
+    throw new AppError(
+      'Endereço inválido.',
+      400,
+    );
+  }
+
+  // O userId vem exclusivamente do JWT.
+  // O service garante que o endereço escolhido
+  // realmente pertence ao usuário autenticado.
+  const address = await setUserDefaultAddress(
+    request.user.id,
+    addressId,
+  );
+
+  return response.status(200).json(address);
 }

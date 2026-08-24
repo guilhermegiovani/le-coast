@@ -4,6 +4,7 @@ import {
   createAddressController,
   deleteAddressController,
   listAddressesController,
+  setDefaultAddressController,
   updateAddressController,
 } from '../controllers/address-controller.js';
 
@@ -23,7 +24,13 @@ addressRoutes.post('/', createAddressController);
 // pertencentes ao usuário autenticado.
 addressRoutes.get('/', listAddressesController);
 
+// Atualiza os dados de um endereço pertencente
+// ao usuário autenticado.
 addressRoutes.patch('/:id', updateAddressController);
+
+// Define um endereço pertencente ao usuário
+// autenticado como seu endereço padrão.
+addressRoutes.patch('/:id/default', setDefaultAddressController);
 
 // Exclui um endereço pertencente ao usuário autenticado.
 //

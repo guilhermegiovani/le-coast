@@ -159,3 +159,37 @@ export async function deleteDefaultAddress(
     }
   });
 }
+
+// Define um endereço como padrão para o usuário.
+//
+// A transação garante que o endereço padrão anterior
+// seja removido e o novo seja definido de forma atômica.
+export async function setDefaultAddress(
+  addressId: number,
+  userId: number,
+) {
+  return prisma.$transaction(async (tx) => {
+    // Remove o status de padrão de qualquer endereço
+    // que atualmente pertença ao usuário.
+    await tx.address.updateMany({
+      where: {
+        userId,
+        isDefault: true,
+      },
+      data: {
+        isDefault: false,
+      },
+    });
+
+    // Define o endereço escolhido como o novo padrão.
+    return tx.address.update({
+      where: {
+        id: addressId,
+        userId,
+      },
+      data: {
+        isDefault: true,
+      },
+    });
+  });
+}
