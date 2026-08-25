@@ -16,6 +16,8 @@ import {
   type LoginInput,
 } from '@/services/auth-service';
 
+import { setApiAccessToken } from '@/lib/api';
+
 // Define os dados e ações que ficarão disponíveis
 // globalmente para os componentes da aplicação.
 type AuthContextData = {
@@ -65,11 +67,13 @@ export function AuthProvider({
 
         setUser(result.user);
         setAccessToken(result.accessToken);
+        setApiAccessToken(result.accessToken);
       } catch {
         // A ausência de uma sessão válida é um estado normal
         // para usuários que ainda não fizeram login.
         setUser(null);
         setAccessToken(null);
+        setApiAccessToken(null);
       } finally {
         // A partir daqui sabemos se existe ou não
         // uma sessão autenticada.
@@ -85,20 +89,28 @@ export function AuthProvider({
   async function login(input: LoginInput) {
     const result = await loginApi(input);
 
+    // Mantém o token em memória no Context
+    // e também configura as próximas requisições da API.
     setUser(result.user);
     setAccessToken(result.accessToken);
+    setApiAccessToken(result.accessToken);
   }
 
   // Encerra a sessão no backend e limpa
-  // imediatamente os dados mantidos no frontend.
+  // todos os dados de autenticação mantidos no frontend.
   async function logout() {
     try {
       await logoutApi();
     } finally {
-      // Limpamos o estado mesmo se houver falha de rede.
-      // Assim, o frontend não continua se considerando autenticado.
+      // A sessão local precisa ser limpa mesmo se
+      // a chamada de logout ao backend falhar.
       setUser(null);
       setAccessToken(null);
+
+      // Remove também o header Authorization da instância
+      // compartilhada da API para impedir que um token antigo
+      // continue sendo enviado após o logout.
+      setApiAccessToken(null);
     }
   }
 

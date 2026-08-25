@@ -3,6 +3,7 @@ import {
     renderHook,
     waitFor,
 } from '@testing-library/react';
+
 import type { ReactNode } from 'react';
 import {
     beforeEach,
@@ -16,11 +17,14 @@ import {
     AuthProvider,
     useAuth,
 } from '@/contexts/auth-context';
+
 import {
     login as loginApi,
     logout as logoutApi,
     refreshSession,
 } from '@/services/auth-service';
+
+import { setApiAccessToken } from '@/lib/api';
 
 // Simula as chamadas HTTP de autenticação.
 // Assim, os testes do Context não dependem
@@ -31,10 +35,19 @@ vi.mock('@/services/auth-service', () => ({
     refreshSession: vi.fn(),
 }));
 
+// Simula a configuração do header Authorization
+// sem alterar a instância Axios real durante os testes.
+vi.mock('@/lib/api', () => ({
+    setApiAccessToken: vi.fn(),
+}));
+
 const loginApiMock = vi.mocked(loginApi);
 const logoutApiMock = vi.mocked(logoutApi);
 const refreshSessionMock = vi.mocked(
     refreshSession,
+);
+const setApiAccessTokenMock = vi.mocked(
+    setApiAccessToken,
 );
 
 const AUTH_USER = {
@@ -111,6 +124,14 @@ describe('AuthContext', () => {
         expect(
             result.current.isAuthenticated,
         ).toBe(true);
+
+        // O access token restaurado também precisa
+        // ser configurado nas próximas requisições da API.
+        expect(
+            setApiAccessTokenMock,
+        ).toHaveBeenCalledWith(
+            'restored-access-token',
+        );
     });
 
     // Garante que ausência de sessão válida
@@ -133,6 +154,12 @@ describe('AuthContext', () => {
         expect(
             result.current.isAuthenticated,
         ).toBe(false);
+
+        // Sem sessão válida, nenhum access token
+        // deve permanecer configurado na API.
+        expect(
+            setApiAccessTokenMock,
+        ).toHaveBeenCalledWith(null);
     });
 
     // Garante que o login atualize o estado global
@@ -169,6 +196,7 @@ describe('AuthContext', () => {
         });
 
         expect(result.current.user).toEqual(AUTH_USER);
+
         expect(result.current.accessToken).toBe(
             'access-token',
         );
@@ -176,6 +204,14 @@ describe('AuthContext', () => {
         expect(
             result.current.isAuthenticated,
         ).toBe(true);
+
+        // O token recebido no login precisa ser
+        // utilizado pelas próximas chamadas autenticadas.
+        expect(
+            setApiAccessTokenMock,
+        ).toHaveBeenCalledWith(
+            'access-token',
+        );
     });
 
     // Garante que o logout encerre a sessão
@@ -213,6 +249,12 @@ describe('AuthContext', () => {
         expect(
             result.current.isAuthenticated,
         ).toBe(false);
+
+        // O logout também deve remover o access token
+        // utilizado pela instância compartilhada da API.
+        expect(
+            setApiAccessTokenMock,
+        ).toHaveBeenCalledWith(null);
     });
 
     // Garante que o frontend seja limpo mesmo
@@ -273,5 +315,11 @@ describe('AuthContext', () => {
         expect(
             result.current.isAuthenticated,
         ).toBe(false);
+
+        // A falha no backend não pode deixar um token
+        // antigo configurado nas próximas requisições.
+        expect(
+            setApiAccessTokenMock,
+        ).toHaveBeenCalledWith(null);
     });
 });

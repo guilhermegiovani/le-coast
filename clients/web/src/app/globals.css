@@ -19,7 +19,8 @@
   /* Feedback */
   --success: #22c55e;
   --warning: #f59e0b;
-  --error: #ef4444;
+  --error: #dc2626;
+  /* #ef4444 */
 }
 
 @theme inline {
