@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import { errorHandler } from './middlewares/error-handler.js';
 import { authRoutes } from './routes/auth-routes.js';
 import { addressRoutes } from './routes/address-routes.js';
+import { orderRoutes } from './routes/order-routes.js';
 
 // Cria a aplicação Express com tipagem explícita.
 // Isso evita problemas de inferência de tipos
@@ -38,6 +39,7 @@ app.use(cookieParser());
 // Registra as rotas de autenticação.
 app.use('/auth', authRoutes);
 app.use('/addresses', addressRoutes);
+app.use('/orders', orderRoutes);
 
 // O middleware global de erros deve ser registrado
 // depois de todas as rotas.

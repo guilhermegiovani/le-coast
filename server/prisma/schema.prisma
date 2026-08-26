@@ -58,6 +58,10 @@ model User {
   // recuperação ao longo do tempo, mantendo seu histórico.
   passwordResetTokens PasswordResetToken[]
 
+  // Relação 1:N:
+  // um usuário pode possuir vários pedidos.
+  orders Order[]
+
   // Mantém o model como User no Prisma/TypeScript,
   // mas utiliza "users" como nome da tabela no PostgreSQL.
   @@map("users")
@@ -191,4 +195,123 @@ model PasswordResetToken {
   // Mantém PascalCase no Prisma/TypeScript e
   // snake_case diretamente no PostgreSQL.
   @@map("password_reset_tokens")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// Representa um pedido realizado por um usuário.
+model Order {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Usuário responsável pelo pedido.
+  userId Int @map("user_id")
+
+  // Status atual do fluxo logístico do pedido.
+  status OrderStatus @default(PENDING)
+
+  // Status atual do pagamento.
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+
+  // Gateway utilizado para processar o pagamento.
+  // Pode permanecer vazio enquanto o pagamento
+  // ainda não tiver sido iniciado.
+  paymentGateway String? @map("payment_gateway")
+
+  // Identificador externo retornado pelo gateway.
+  paymentId String? @map("payment_id")
+
+  // Valor total congelado no momento da criação do pedido.
+  totalAmount Decimal @map("total_amount") @db.Decimal(10, 2)
+
+  // Datas de criação e atualização do pedido.
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Define o usuário proprietário do pedido.
+  user User @relation(fields: [userId], references: [id])
+
+  // Cada pedido possui uma cópia do endereço utilizado
+  // no momento da compra.
+  address OrderAddress?
+
+  // Um pedido possui um ou mais itens.
+  items OrderItem[]
+
+  // Facilita consultas dos pedidos pertencentes a um usuário.
+  @@index([userId])
+  @@map("orders")
+}
+
+// Mantém uma cópia do endereço utilizado no pedido.
+//
+// O endereço do usuário pode ser editado ou excluído depois,
+// mas os dados históricos do pedido devem permanecer imutáveis.
+model OrderAddress {
+  id Int @id @default(autoincrement())
+
+  // Relação 1:1 com o pedido.
+  orderId Int @unique @map("order_id")
+
+  name         String
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  zipCode      String  @map("zip_code")
+  country      String  @default("BR")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Se o pedido for removido, seu snapshot de endereço
+  // também deixa de ter utilidade.
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_addresses")
+}
+
+// Representa um item congelado no momento da compra.
+//
+// Guardamos quantidade e preço no pedido para preservar
+// o histórico mesmo que o produto mude posteriormente.
+model OrderItem {
+  id Int @id @default(autoincrement())
+
+  orderId Int @map("order_id")
+
+  // Identificador da variação comprada.
+  //
+  // Por enquanto é armazenado sem foreign key porque
+  // ProductVariant ainda não existe no schema atual.
+  //
+  // Quando ProductVariant for implementado, este campo
+  // deverá receber a relação e a FK correspondente.
+  variantId Int @map("variant_id")
+
+  quantity Int
+
+  // Preço unitário congelado no momento da compra.
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
 }
