@@ -1,13 +1,20 @@
+import { AppError } from '../errors/app-error.js';
 import {
     createOrderRepository,
     findOrderByIdAndUserId,
+    updateOrderStatusRepository,
     findOrdersByUserId,
+    findOrderById,
 } from '../repositories/order-repository.js';
 
 import {
     createOrderSchema,
+    updateOrderStatusSchema,
+    type UpdateOrderStatusInput,
     type CreateOrderInput,
 } from '../validators/order-validator.js';
+
+import type { OrderStatus } from '../generated/prisma/client.js';
 
 // Cria um novo pedido para o usuário autenticado.
 //
@@ -53,11 +60,63 @@ export async function listUserOrders(
 // Busca um pedido específico pertencente
 // ao usuário autenticado.
 export async function getUserOrderById(
-  userId: number,
-  orderId: number,
+    userId: number,
+    orderId: number,
 ) {
-  return findOrderByIdAndUserId(
-    orderId,
-    userId,
-  );
+    return findOrderByIdAndUserId(
+        orderId,
+        userId,
+    );
+}
+
+const ORDER_STATUS_TRANSITIONS: Record<
+    OrderStatus,
+    OrderStatus[]
+> = {
+    PENDING: [
+        'PROCESSING',
+        'CANCELLED',
+    ],
+    PROCESSING: [
+        'SHIPPED',
+        'CANCELLED',
+    ],
+    SHIPPED: [
+        'DELIVERED',
+    ],
+    DELIVERED: [],
+    CANCELLED: [],
+};
+
+// Atualiza o status de um pedido respeitando
+// a ordem permitida do fluxo de processamento.
+export async function updateOrderStatus(
+    orderId: number,
+    data: UpdateOrderStatusInput,
+) {
+    const input = updateOrderStatusSchema.parse(data);
+
+    const order = await findOrderById(orderId);
+
+    if (!order) {
+        throw new AppError(
+            'Pedido não encontrado.',
+            404,
+        );
+    }
+
+    const allowedStatuses =
+        ORDER_STATUS_TRANSITIONS[order.status];
+
+    if (!allowedStatuses.includes(input.status)) {
+        throw new AppError(
+            'Transição de status inválida.',
+            400,
+        );
+    }
+
+    return updateOrderStatusRepository(
+        orderId,
+        input.status,
+    );
 }

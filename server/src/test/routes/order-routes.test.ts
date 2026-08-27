@@ -14,6 +14,7 @@ import {
   createUserOrder,
   getUserOrderById,
   listUserOrders,
+  updateOrderStatus,
 } from '../../services/order-service.js';
 
 // Simula o service para que os testes HTTP
@@ -22,6 +23,7 @@ vi.mock('../../services/order-service.js', () => ({
   createUserOrder: vi.fn(),
   getUserOrderById: vi.fn(),
   listUserOrders: vi.fn(),
+  updateOrderStatus: vi.fn(),
 }));
 
 const createUserOrderMock = vi.mocked(
@@ -34,6 +36,10 @@ const listUserOrdersMock = vi.mocked(
 
 const getUserOrderByIdMock = vi.mocked(
   getUserOrderById,
+);
+
+const updateOrderStatusMock = vi.mocked(
+  updateOrderStatus,
 );
 
 const VALID_ORDER_INPUT = {
@@ -387,5 +393,121 @@ describe('GET /orders/:id', () => {
     expect(response.body).toEqual({
       message: 'Pedido não encontrado.',
     });
+  });
+});
+
+describe('PATCH /orders/:id/status', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que a atualização de status
+  // não possa ser acessada sem autenticação.
+  it('deve retornar 401 quando o token não for informado', async () => {
+    await request(app)
+      .patch('/orders/1/status')
+      .send({
+        status: 'PROCESSING',
+      })
+      .expect(401);
+
+    expect(
+      updateOrderStatusMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que clientes comuns não possam
+  // alterar o fluxo operacional dos pedidos.
+  it('deve retornar 403 quando o usuário não for ADMIN', async () => {
+    const accessToken = generateAccessToken({
+      id: 3,
+      role: 'CUSTOMER',
+    });
+
+    await request(app)
+      .patch('/orders/1/status')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .send({
+        status: 'PROCESSING',
+      })
+      .expect(403);
+
+    expect(
+      updateOrderStatusMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que um administrador possa
+  // atualizar o status de um pedido.
+  it('deve permitir que ADMIN atualize o status do pedido', async () => {
+    const accessToken = generateAccessToken({
+      id: 1,
+      role: 'ADMIN',
+    });
+
+    updateOrderStatusMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'PROCESSING',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    const response = await request(app)
+      .patch('/orders/1/status')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .send({
+        status: 'PROCESSING',
+      })
+      .expect(200);
+
+    expect(
+      updateOrderStatusMock,
+    ).toHaveBeenCalledWith(
+      1,
+      {
+        status: 'PROCESSING',
+      },
+    );
+
+    expect(response.body).toMatchObject({
+      id: 1,
+      status: 'PROCESSING',
+      userId: 3,
+    });
+  });
+
+  // Garante que identificadores inválidos sejam
+  // rejeitados antes de chegar ao service.
+  it('deve retornar 400 quando o id do pedido for inválido', async () => {
+    const accessToken = generateAccessToken({
+      id: 1,
+      role: 'ADMIN',
+    });
+
+    await request(app)
+      .patch('/orders/abc/status')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .send({
+        status: 'PROCESSING',
+      })
+      .expect(400);
+
+    expect(
+      updateOrderStatusMock,
+    ).not.toHaveBeenCalled();
   });
 });

@@ -50,3 +50,17 @@ export const createOrderSchema = z.object({
 
 export type CreateOrderInput =
   z.infer<typeof createOrderSchema>;
+
+  // Define os status permitidos em uma atualização de pedido.
+export const updateOrderStatusSchema = z.object({
+  status: z.enum([
+    'PENDING',
+    'PROCESSING',
+    'SHIPPED',
+    'DELIVERED',
+    'CANCELLED',
+  ]),
+});
+
+export type UpdateOrderStatusInput =
+  z.infer<typeof updateOrderStatusSchema>;

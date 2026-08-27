@@ -4,7 +4,7 @@ import type {
 } from 'express';
 
 import { AppError } from '../errors/app-error.js';
-import { createUserOrder, getUserOrderById, listUserOrders } from '../services/order-service.js';
+import { createUserOrder, getUserOrderById, listUserOrders, updateOrderStatus } from '../services/order-service.js';
 
 // Cria um novo pedido para o usuário autenticado.
 export async function createOrderController(
@@ -93,6 +93,36 @@ export async function getOrderByIdController(
       404,
     );
   }
+
+  return response.status(200).json(order);
+}
+
+// Atualiza o status de um pedido.
+//
+// Esta operação é administrativa e a autorização
+// de acesso é garantida pelos middlewares da rota.
+export async function updateOrderStatusController(
+  request: Request,
+  response: Response,
+) {
+  const orderId = Number(request.params.id);
+
+  // Impede atualizações com identificadores
+  // que não representem inteiros positivos.
+  if (
+    !Number.isInteger(orderId) ||
+    orderId <= 0
+  ) {
+    throw new AppError(
+      'Pedido inválido.',
+      400,
+    );
+  }
+
+  const order = await updateOrderStatus(
+    orderId,
+    request.body,
+  );
 
   return response.status(200).json(order);
 }

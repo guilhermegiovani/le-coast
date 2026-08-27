@@ -5,25 +5,29 @@ import {
   it,
   vi,
 } from 'vitest';
-
 import {
   createOrderRepository,
+  findOrderById,
   findOrderByIdAndUserId,
   findOrdersByUserId,
+  updateOrderStatusRepository,
 } from '../../repositories/order-repository.js';
 
 import {
   createUserOrder,
   getUserOrderById,
   listUserOrders,
+  updateOrderStatus,
 } from '../../services/order-service.js';
 
 // Simula o repository para que os testes do service
 // não utilizem o banco real.
 vi.mock('../../repositories/order-repository.js', () => ({
   createOrderRepository: vi.fn(),
+  findOrderById: vi.fn(),
   findOrderByIdAndUserId: vi.fn(),
   findOrdersByUserId: vi.fn(),
+  updateOrderStatusRepository: vi.fn(),
 }));
 
 const createOrderRepositoryMock = vi.mocked(
@@ -36,6 +40,14 @@ const findOrdersByUserIdMock = vi.mocked(
 
 const findOrderByIdAndUserIdMock = vi.mocked(
   findOrderByIdAndUserId,
+);
+
+const findOrderByIdMock = vi.mocked(
+  findOrderById,
+);
+
+const updateOrderStatusRepositoryMock = vi.mocked(
+  updateOrderStatusRepository,
 );
 
 const VALID_ORDER_INPUT = {
@@ -255,5 +267,271 @@ describe('getUserOrderById', () => {
     );
 
     expect(result).toBeNull();
+  });
+});
+
+describe('updateOrderStatus', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que uma transição válida seja
+  // persistida corretamente.
+  it('deve atualizar PENDING para PROCESSING', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'PENDING',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    updateOrderStatusRepositoryMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'PROCESSING',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    const result = await updateOrderStatus(
+      1,
+      {
+        status: 'PROCESSING',
+      },
+    );
+
+    expect(
+      updateOrderStatusRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      'PROCESSING',
+    );
+
+    expect(result.status).toBe(
+      'PROCESSING',
+    );
+  });
+
+  // Garante que etapas do fluxo não possam
+  // ser puladas.
+  it('não deve permitir PENDING para SHIPPED', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'PENDING',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    await expect(
+      updateOrderStatus(
+        1,
+        {
+          status: 'SHIPPED',
+        },
+      ),
+    ).rejects.toMatchObject({
+      message: 'Transição de status inválida.',
+      statusCode: 400,
+    });
+
+    expect(
+      updateOrderStatusRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que pedidos finalizados não possam
+  // ser cancelados pelo fluxo de status.
+  it('não deve permitir DELIVERED para CANCELLED', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PAID',
+      status: 'DELIVERED',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    await expect(
+      updateOrderStatus(
+        1,
+        {
+          status: 'CANCELLED',
+        },
+      ),
+    ).rejects.toMatchObject({
+      message: 'Transição de status inválida.',
+      statusCode: 400,
+    });
+  });
+
+  // Garante que pedidos inexistentes
+  // não possam ser atualizados.
+  it('deve retornar 404 quando o pedido não existir', async () => {
+    findOrderByIdMock.mockResolvedValue(null);
+
+    await expect(
+      updateOrderStatus(
+        999,
+        {
+          status: 'PROCESSING',
+        },
+      ),
+    ).rejects.toMatchObject({
+      message: 'Pedido não encontrado.',
+      statusCode: 404,
+    });
+
+    expect(
+      updateOrderStatusRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que um pedido em processamento
+  // possa avançar para a etapa de envio.
+  it('deve atualizar PROCESSING para SHIPPED', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'PROCESSING',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    updateOrderStatusRepositoryMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'SHIPPED',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    const result = await updateOrderStatus(
+      1,
+      {
+        status: 'SHIPPED',
+      },
+    );
+
+    expect(
+      updateOrderStatusRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      'SHIPPED',
+    );
+
+    expect(result.status).toBe('SHIPPED');
+  });
+
+  // Garante que um pedido enviado
+  // possa avançar para a etapa de entrega.
+  it('deve atualizar SHIPPED para DELIVERED', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'SHIPPED',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    updateOrderStatusRepositoryMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'DELIVERED',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    const result = await updateOrderStatus(
+      1,
+      {
+        status: 'DELIVERED',
+      },
+    );
+
+    expect(
+      updateOrderStatusRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      'DELIVERED',
+    );
+
+    expect(result.status).toBe('DELIVERED');
+  });
+
+  // Garante que pedidos ainda pendentes
+  // possam ser cancelados antes do processamento.
+  it('deve atualizar PENDING para CANCELLED', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'PENDING',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    updateOrderStatusRepositoryMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'CANCELLED',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    const result = await updateOrderStatus(
+      1,
+      {
+        status: 'CANCELLED',
+      },
+    );
+
+    expect(
+      updateOrderStatusRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      'CANCELLED',
+    );
+
+    expect(result.status).toBe('CANCELLED');
   });
 });
