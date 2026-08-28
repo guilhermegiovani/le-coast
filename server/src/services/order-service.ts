@@ -105,6 +105,18 @@ export async function updateOrderStatus(
         );
     }
 
+    // Um pedido só pode começar a ser processado
+    // depois que o pagamento for confirmado.
+    if (
+        input.status === 'PROCESSING' &&
+        order.paymentStatus !== 'PAID'
+    ) {
+        throw new AppError(
+            'O pedido só pode ser processado após a confirmação do pagamento.',
+            400,
+        );
+    }
+
     const allowedStatuses =
         ORDER_STATUS_TRANSITIONS[order.status];
 

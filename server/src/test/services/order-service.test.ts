@@ -283,7 +283,7 @@ describe('updateOrderStatus', () => {
       id: 1,
       paymentGateway: null,
       paymentId: null,
-      paymentStatus: 'PENDING',
+      paymentStatus: 'PAID',
       status: 'PENDING',
       totalAmount: 209.7 as never,
       updatedAt: new Date(),
@@ -533,5 +533,35 @@ describe('updateOrderStatus', () => {
     );
 
     expect(result.status).toBe('CANCELLED');
+  });
+
+  it('não deve processar um pedido com pagamento pendente', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      createdAt: new Date(),
+      id: 1,
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'PENDING',
+      totalAmount: 209.7 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    await expect(
+      updateOrderStatus(1, {
+        status: 'PROCESSING',
+      }),
+    ).rejects.toMatchObject({
+      message:
+        'O pedido só pode ser processado após a confirmação do pagamento.',
+      statusCode: 400,
+    });
+
+    // Como o pagamento não foi confirmado,
+    // nenhuma atualização deve chegar ao banco.
+    expect(
+      updateOrderStatusRepositoryMock,
+    ).not.toHaveBeenCalled();
   });
 });
