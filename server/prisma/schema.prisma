@@ -295,12 +295,6 @@ model OrderItem {
   orderId Int @map("order_id")
 
   // Identificador da variação comprada.
-  //
-  // Por enquanto é armazenado sem foreign key porque
-  // ProductVariant ainda não existe no schema atual.
-  //
-  // Quando ProductVariant for implementado, este campo
-  // deverá receber a relação e a FK correspondente.
   variantId Int @map("variant_id")
 
   quantity Int
@@ -312,6 +306,231 @@ model OrderItem {
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
+  // Relaciona o item do pedido à variação comprada.
+  //
+  // O OrderItem mantém seus próprios dados históricos,
+  // mas a FK garante que a variação referenciada exista.
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  // Snapshot do nome do produto no momento da compra.
+  //
+  // Mesmo que o produto seja renomeado posteriormente,
+  // o pedido continuará exibindo o nome original.
+  productName String @map("product_name")
+
+  // Snapshot do tamanho comprado.
+  //
+  // Isso preserva o histórico mesmo que o nome do tamanho
+  // seja alterado posteriormente no catálogo.
+  sizeName String @map("size_name")
+
+  // Snapshot da cor comprada.
+  //
+  // Assim, alterações futuras na cor cadastrada não modificam
+  // a descrição de itens pertencentes a pedidos antigos.
+  colorName String @map("color_name")
+
   @@index([orderId])
+  @@index([variantId])
   @@map("order_items")
+}
+
+// Representa uma categoria utilizada para organizar
+// os produtos da Le Coast.
+//
+// A relação com ela mesma permite criar uma hierarquia,
+// como "Fitness" → "Leggings" ou "Praia" → "Biquínis".
+model Category {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Nome exibido para o cliente.
+  // Deve ser único para evitar categorias duplicadas.
+  name String @unique
+
+  // Identificador amigável utilizado nas URLs.
+  // Exemplo: "Moda Praia" → "moda-praia".
+  slug String @unique
+
+  // Categoria pai, quando esta categoria for uma subcategoria.
+  // NULL indica que esta é uma categoria principal.
+  parentId Int? @map("parent_id")
+
+  // Permite ocultar uma categoria sem apagar seu histórico.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relação recursiva:
+  // uma categoria pode possuir uma categoria pai.
+  parent Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+
+  // Relação inversa:
+  // uma categoria pode possuir várias subcategorias.
+  children Category[] @relation("CategoryHierarchy")
+
+  // Uma categoria pode possuir vários produtos.
+  products Product[]
+
+  // Facilita consultas pelas subcategorias de uma categoria.
+  @@index([parentId])
+  @@map("categories")
+}
+
+// Representa um tamanho disponível para as variações
+// dos produtos da Le Coast.
+model Size {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Nome do tamanho exibido ao cliente.
+  // Exemplos: PP, P, M, G, GG ou Único.
+  name String @unique
+
+  // Permite desativar um tamanho sem removê-lo do banco,
+  // preservando referências e dados históricos.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Um produto pode possuir várias combinações
+  // vendáveis de tamanho e cor.
+  variants ProductVariant[]
+
+  @@map("sizes")
+}
+
+// Representa uma cor disponível para as variações
+// dos produtos da Le Coast.
+model Color {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Nome da cor exibido ao cliente.
+  // Exemplos: Preto, Branco ou Azul-marinho.
+  name String @unique
+
+  // Representação hexadecimal opcional da cor.
+  // Algumas estampas ou combinações podem não ser
+  // representadas adequadamente por uma única cor.
+  hexCode String? @map("hex_code")
+
+  // Permite desativar uma cor sem apagar registros
+  // que possam estar relacionados a produtos históricos.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Um produto pode possuir várias combinações
+  // vendáveis de tamanho e cor.
+  variants ProductVariant[]
+
+  @@map("colors")
+}
+
+// Representa um produto da Le Coast.
+//
+// O produto contém as informações gerais da peça.
+// Preço, estoque, tamanho e cor pertencem às suas variações,
+// pois podem ser diferentes para cada combinação vendável.
+model Product {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Categoria principal à qual o produto pertence.
+  categoryId Int @map("category_id")
+
+  // Nome exibido ao cliente.
+  name String
+
+  // Identificador amigável utilizado na URL do produto.
+  // Deve ser único para que cada produto possua sua própria rota.
+  slug String @unique
+
+  // Descrição detalhada da peça.
+  // É opcional para permitir o cadastro inicial mesmo
+  // quando a descrição ainda não estiver pronta.
+  description String?
+
+  // Permite retirar um produto da loja sem apagá-lo
+  // e comprometer informações relacionadas.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Cada produto pertence a uma única categoria principal.
+  category Category @relation(fields: [categoryId], references: [id])
+
+  // Um produto pode possuir várias combinações
+  // vendáveis de tamanho e cor.
+  variants ProductVariant[]
+
+  // Facilita consultas dos produtos pertencentes
+  // a uma determinada categoria.
+  @@index([categoryId])
+  @@map("products")
+}
+
+// Representa uma combinação vendável de um produto.
+//
+// Exemplo:
+// Top Essential + tamanho M + cor Preto.
+//
+// Preço e estoque ficam na variação porque diferentes
+// combinações podem possuir valores e estoques diferentes.
+model ProductVariant {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Produto ao qual esta variação pertence.
+  productId Int @map("product_id")
+
+  // Tamanho utilizado nesta variação.
+  sizeId Int @map("size_id")
+
+  // Cor utilizada nesta variação.
+  colorId Int @map("color_id")
+
+  // Código único utilizado para identificar a variação.
+  // Exemplo: TOP-ESS-M-PRETO.
+  sku String @unique
+
+  // Preço atual de venda desta variação.
+  price Decimal @db.Decimal(10, 2)
+
+  // Quantidade atualmente disponível em estoque.
+  stock Int @default(0)
+
+  // Permite desativar uma variação sem excluí-la,
+  // preservando referências e histórico.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Cada variação pertence a um produto.
+  product Product @relation(fields: [productId], references: [id])
+
+  // Cada variação possui um tamanho.
+  size Size @relation(fields: [sizeId], references: [id])
+
+  // Cada variação possui uma cor.
+  color Color @relation(fields: [colorId], references: [id])
+
+  // Pedidos que já utilizaram esta variação.
+  //
+  // Essa relação também reforça que variantes usadas em pedidos
+  // não devem ser simplesmente apagadas do banco.
+  orderItems OrderItem[]
+
+  // Impede que a mesma combinação de produto,
+  // tamanho e cor seja cadastrada mais de uma vez.
+  @@unique([productId, sizeId, colorId])
+  // Facilita consultas das variações de determinado produto.
+  @@index([productId])
+  @@map("product_variants")
 }

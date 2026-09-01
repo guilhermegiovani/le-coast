@@ -2,9 +2,20 @@ import type { CreateOrderInput } from '../validators/order-validator.js';
 import type { OrderStatus } from '../generated/prisma/client.js';
 import { prisma } from '../config/prisma.js';
 
-type CreateOrderRepositoryInput = {
+type CreateOrderRepositoryItem = {
+  variantId: number;
+  productName: string;
+  sizeName: string;
+  colorName: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+type CreateOrderRepositoryParams = {
   userId: number;
-  data: CreateOrderInput;
+  data: Omit<CreateOrderInput, 'items'> & {
+    items: CreateOrderRepositoryItem[];
+  };
   totalAmount: number;
 };
 
@@ -17,7 +28,7 @@ export async function createOrderRepository({
   userId,
   data,
   totalAmount,
-}: CreateOrderRepositoryInput) {
+}: CreateOrderRepositoryParams) {
   return prisma.$transaction(async (transaction) => {
     // Cria primeiro o registro principal do pedido.
     const order = await transaction.order.create({
@@ -56,9 +67,17 @@ export async function createOrderRepository({
     await transaction.orderItem.createMany({
       data: data.items.map((item) => ({
         orderId: order.id,
+        variantId: item.variantId,
+
+        // Snapshot das informações do produto no momento da compra.
+        // Esses dados devem vir preparados pelo service antes
+        // de chegar ao repository.
+        productName: item.productName,
+        sizeName: item.sizeName,
+        colorName: item.colorName,
+
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        variantId: item.variantId,
       })),
     });
 

@@ -111,7 +111,12 @@ describe('POST /orders', () => {
           createdAt: new Date(),
           id: 1,
           orderId: 1,
-          quantity: 2,
+
+          productName: 'Top Essential',
+          sizeName: 'M',
+          colorName: 'Preto',
+
+          quantity: 1,
           unitPrice: 79.9 as never,
           variantId: 1,
         },

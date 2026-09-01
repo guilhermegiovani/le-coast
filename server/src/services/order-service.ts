@@ -7,6 +7,8 @@ import {
     findOrderById,
 } from '../repositories/order-repository.js';
 
+import { findActiveProductVariantsByIds } from '../repositories/product-variant-repository.js';
+
 import {
     createOrderSchema,
     updateOrderStatusSchema,
@@ -27,13 +29,74 @@ export async function createUserOrder(
 ) {
     const input = createOrderSchema.parse(data);
 
-    // Calcula o valor total do pedido e normaliza
-    // o resultado para duas casas decimais.
+    // Remove IDs repetidos antes de consultar o banco,
+    // evitando buscas desnecessárias pela mesma variação.
+    const variantIds = [
+        ...new Set(input.items.map((item) => item.variantId)),
+    ];
+
+    const variants = await findActiveProductVariantsByIds(variantIds);
+
+    console.log({
+        variantIds,
+        variants,
+    });
+
+    // Todas as variações enviadas pelo cliente precisam existir
+    // e estar disponíveis para venda.
+    if (variants.length !== variantIds.length) {
+        throw new AppError(
+            'Uma ou mais variações do pedido são inválidas ou estão indisponíveis.',
+            400,
+        );
+    }
+
+    // Monta os itens utilizando exclusivamente informações
+    // confiáveis vindas do banco.
     //
-    // Isso evita imprecisões de ponto flutuante do JavaScript,
-    // como 209.70000000000002 em cálculos monetários.
+    // O preço enviado pelo frontend deixa de ser utilizado.
+    const orderItems = input.items.map((item) => {
+        const variant = variants.find(
+            (currentVariant) => currentVariant.id === item.variantId,
+        );
+
+        // Este caso já foi protegido pela validação acima,
+        // mas mantemos a verificação para evitar acesso inseguro.
+        if (!variant) {
+            throw new AppError(
+                'Variação do produto não encontrada.',
+                400,
+            );
+        }
+
+        // Impede que o cliente compre uma quantidade maior
+        // do que o estoque atualmente disponível.
+        if (item.quantity > variant.stock) {
+            throw new AppError(
+                `Estoque insuficiente para a variação ${variant.sku}.`,
+                400,
+            );
+        }
+
+        return {
+            variantId: variant.id,
+
+            // Snapshot histórico do produto no momento da compra.
+            productName: variant.product.name,
+            sizeName: variant.size.name,
+            colorName: variant.color.name,
+
+            quantity: item.quantity,
+
+            // O preço sempre vem do banco e nunca do frontend.
+            unitPrice: Number(variant.price),
+        };
+    });
+
+    // Calcula o total com os preços oficiais recuperados
+    // diretamente do banco de dados.
     const totalAmount = Number(
-        input.items
+        orderItems
             .reduce(
                 (total, item) =>
                     total + item.unitPrice * item.quantity,
@@ -43,9 +106,12 @@ export async function createUserOrder(
     );
 
     return createOrderRepository({
-        data: input,
-        totalAmount,
         userId,
+        data: {
+            ...input,
+            items: orderItems,
+        },
+        totalAmount,
     });
 }
 
