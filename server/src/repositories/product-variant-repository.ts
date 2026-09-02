@@ -30,3 +30,132 @@ export async function findActiveProductVariantsByIds(
     },
   });
 }
+
+// Cria uma nova variante de produto.
+export async function createProductVariantRepository(data: {
+  productId: number;
+  sizeId: number;
+  colorId: number;
+  sku: string;
+  price: number;
+  stock?: number;
+}) {
+  return prisma.productVariant.create({
+    data,
+    include: {
+      product: true,
+      size: true,
+      color: true,
+    },
+  });
+}
+
+/**
+ * Busca uma variante específica pelo id.
+ *
+ * Produto, tamanho e cor são carregados porque essas
+ * informações fazem parte da representação da variante.
+ */
+export async function findProductVariantByIdRepository(
+  variantId: number,
+) {
+  return prisma.productVariant.findUnique({
+    where: {
+      id: variantId,
+    },
+    include: {
+      product: true,
+      size: true,
+      color: true,
+    },
+  });
+}
+
+/**
+ * Lista as variantes ativas de um produto.
+ *
+ * Somente variantes ativas devem aparecer no catálogo público.
+ */
+export async function findProductVariantsByProductIdRepository(
+  productId: number,
+) {
+  return prisma.productVariant.findMany({
+    where: {
+      productId,
+      isActive: true,
+    },
+    orderBy: {
+      id: 'asc',
+    },
+    include: {
+      size: true,
+      color: true,
+    },
+  });
+}
+
+/**
+ * Busca uma variante pelo SKU.
+ *
+ * O service utiliza essa consulta para detectar
+ * conflitos de SKU antes da criação ou atualização.
+ */
+export async function findProductVariantBySkuRepository(
+  sku: string,
+) {
+  return prisma.productVariant.findUnique({
+    where: {
+      sku,
+    },
+  });
+}
+
+/**
+ * Busca uma variante pela combinação de produto,
+ * tamanho e cor.
+ *
+ * A mesma combinação não pode existir duas vezes,
+ * conforme a constraint UNIQUE do schema.
+ */
+export async function findProductVariantByCombinationRepository(
+  productId: number,
+  sizeId: number,
+  colorId: number,
+) {
+  return prisma.productVariant.findUnique({
+    where: {
+      productId_sizeId_colorId: {
+        productId,
+        sizeId,
+        colorId,
+      },
+    },
+  });
+}
+
+/**
+ * Atualiza os dados de uma variante existente.
+ */
+export async function updateProductVariantRepository(
+  variantId: number,
+  data: {
+    sizeId?: number;
+    colorId?: number;
+    sku?: string;
+    price?: number;
+    stock?: number;
+    isActive?: boolean;
+  },
+) {
+  return prisma.productVariant.update({
+    where: {
+      id: variantId,
+    },
+    data,
+    include: {
+      product: true,
+      size: true,
+      color: true,
+    },
+  });
+}
