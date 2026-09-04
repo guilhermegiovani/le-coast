@@ -103,3 +103,60 @@ export async function createCartItemRepository(data: {
     },
   });
 }
+
+/**
+ * Busca um item pelo seu id dentro de um carrinho.
+ *
+ * O cartId também é utilizado para garantir que o usuário
+ * só manipule itens pertencentes ao próprio carrinho.
+ */
+export async function findCartItemByIdRepository(
+  cartItemId: number,
+  cartId: number,
+) {
+  return prisma.cartItem.findFirst({
+    where: {
+      id: cartItemId,
+      cartId,
+    },
+  });
+}
+
+/**
+ * Atualiza a quantidade de um item existente.
+ */
+export async function updateCartItemRepository(
+  cartItemId: number,
+  quantity: number,
+) {
+  return prisma.cartItem.update({
+    where: {
+      id: cartItemId,
+    },
+    data: {
+      quantity,
+    },
+    include: {
+      variant: {
+        include: {
+          product: true,
+          size: true,
+          color: true,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Remove um item do carrinho.
+ */
+export async function deleteCartItemRepository(
+  cartItemId: number,
+) {
+  return prisma.cartItem.delete({
+    where: {
+      id: cartItemId,
+    },
+  });
+}

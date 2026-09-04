@@ -10,7 +10,10 @@ import {
     createCartRepository,
     findCartByUserIdRepository,
     findCartItemByVariantRepository,
+    findCartItemByIdRepository,
     createCartItemRepository,
+    updateCartItemRepository,
+    deleteCartItemRepository,
 } from '../../repositories/cart-repository.js';
 
 import {
@@ -20,6 +23,8 @@ import {
 import {
     getUserCart,
     addCartItem,
+    updateCartItem,
+    deleteCartItem,
 } from '../../services/cart-service.js';
 
 // Simula os repositories para que os testes do service
@@ -29,6 +34,9 @@ vi.mock('../../repositories/cart-repository.js', () => ({
     findCartByUserIdRepository: vi.fn(),
     findCartItemByVariantRepository: vi.fn(),
     createCartItemRepository: vi.fn(),
+    findCartItemByIdRepository: vi.fn(),
+    updateCartItemRepository: vi.fn(),
+    deleteCartItemRepository: vi.fn(),
 }));
 
 vi.mock(
@@ -56,6 +64,18 @@ const createCartItemRepositoryMock = vi.mocked(
 
 const findActiveProductVariantsByIdsMock = vi.mocked(
     findActiveProductVariantsByIds,
+);
+
+const findCartItemByIdRepositoryMock = vi.mocked(
+    findCartItemByIdRepository,
+);
+
+const updateCartItemRepositoryMock = vi.mocked(
+    updateCartItemRepository,
+);
+
+const deleteCartItemRepositoryMock = vi.mocked(
+    deleteCartItemRepository,
 );
 
 const MOCK_CART = {
@@ -333,5 +353,233 @@ describe('addCartItem', () => {
             quantity: 2,
             unitPrice: 79.9,
         });
+    });
+});
+
+describe('updateCartItem', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        findCartByUserIdRepositoryMock.mockResolvedValue(
+            MOCK_CART as never,
+        );
+
+        findCartItemByIdRepositoryMock.mockResolvedValue({
+            id: 1,
+            cartId: 1,
+            variantId: 1,
+            quantity: 2,
+            unitPrice: 79.9 as never,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        findActiveProductVariantsByIdsMock.mockResolvedValue([
+            MOCK_VARIANT as never,
+        ]);
+    });
+
+    // Garante que a quantidade seja atualizada quando
+    // o item pertence ao carrinho e existe estoque disponível.
+    it('deve atualizar a quantidade do item', async () => {
+        updateCartItemRepositoryMock.mockResolvedValue({
+            id: 1,
+            cartId: 1,
+            variantId: 1,
+            quantity: 3,
+            unitPrice: 79.9 as never,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        } as never);
+
+        const result = await updateCartItem(
+            3,
+            1,
+            3,
+        );
+
+        expect(
+            updateCartItemRepositoryMock,
+        ).toHaveBeenCalledWith(1, 3);
+
+        expect(result.quantity).toBe(3);
+    });
+
+    // Garante que uma quantidade inválida seja rejeitada
+    // antes de qualquer consulta ao banco.
+    it('não deve aceitar quantidade inválida', async () => {
+        await expect(
+            updateCartItem(3, 1, 0),
+        ).rejects.toMatchObject({
+            message:
+                'A quantidade deve ser maior que zero.',
+            statusCode: 400,
+        });
+
+        expect(
+            findCartByUserIdRepositoryMock,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            updateCartItemRepositoryMock,
+        ).not.toHaveBeenCalled();
+    });
+
+    // Garante que um usuário sem carrinho não consiga
+    // alterar itens.
+    it('não deve atualizar item sem carrinho', async () => {
+        findCartByUserIdRepositoryMock.mockResolvedValue(
+            null,
+        );
+
+        await expect(
+            updateCartItem(3, 1, 3),
+        ).rejects.toMatchObject({
+            message: 'Carrinho não encontrado.',
+            statusCode: 404,
+        });
+
+        expect(
+            updateCartItemRepositoryMock,
+        ).not.toHaveBeenCalled();
+    });
+
+    // Garante que somente itens pertencentes ao carrinho
+    // do usuário possam ser alterados.
+    it('não deve atualizar item que não pertence ao carrinho', async () => {
+        findCartItemByIdRepositoryMock.mockResolvedValue(
+            null,
+        );
+
+        await expect(
+            updateCartItem(3, 999, 3),
+        ).rejects.toMatchObject({
+            message:
+                'Item do carrinho não encontrado.',
+            statusCode: 404,
+        });
+
+        expect(
+            updateCartItemRepositoryMock,
+        ).not.toHaveBeenCalled();
+    });
+
+    // Garante que a nova quantidade respeite o estoque
+    // disponível na ProductVariant.
+    it('não deve atualizar para quantidade maior que o estoque', async () => {
+        await expect(
+            updateCartItem(3, 1, 11),
+        ).rejects.toMatchObject({
+            message:
+                'Estoque insuficiente para a variação TOP-ESS-M-PRETO.',
+            statusCode: 400,
+        });
+
+        expect(
+            updateCartItemRepositoryMock,
+        ).not.toHaveBeenCalled();
+    });
+
+    // Garante que uma variante que deixou de estar disponível
+    // não possa ter sua quantidade alterada.
+    it('não deve atualizar item com variante indisponível', async () => {
+        findActiveProductVariantsByIdsMock.mockResolvedValue(
+            [],
+        );
+
+        await expect(
+            updateCartItem(3, 1, 3),
+        ).rejects.toMatchObject({
+            message:
+                'Variação do produto não encontrada ou está indisponível.',
+            statusCode: 404,
+        });
+
+        expect(
+            updateCartItemRepositoryMock,
+        ).not.toHaveBeenCalled();
+    });
+});
+
+describe('deleteCartItem', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        findCartByUserIdRepositoryMock.mockResolvedValue(
+            MOCK_CART as never,
+        );
+
+        findCartItemByIdRepositoryMock.mockResolvedValue({
+            id: 1,
+            cartId: 1,
+            variantId: 1,
+            quantity: 2,
+            unitPrice: 79.9 as never,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+    });
+
+    // Garante que um item pertencente ao carrinho
+    // possa ser removido.
+    it('deve remover um item do carrinho', async () => {
+        deleteCartItemRepositoryMock.mockResolvedValue({
+            id: 1,
+            cartId: 1,
+            variantId: 1,
+            quantity: 2,
+            unitPrice: 79.9 as never,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        await deleteCartItem(3, 1);
+
+        expect(
+            findCartItemByIdRepositoryMock,
+        ).toHaveBeenCalledWith(1, 1);
+
+        expect(
+            deleteCartItemRepositoryMock,
+        ).toHaveBeenCalledWith(1);
+    });
+
+    // Garante que um usuário sem carrinho não consiga
+    // remover itens.
+    it('não deve remover item sem carrinho', async () => {
+        findCartByUserIdRepositoryMock.mockResolvedValue(
+            null,
+        );
+
+        await expect(
+            deleteCartItem(3, 1),
+        ).rejects.toMatchObject({
+            message: 'Carrinho não encontrado.',
+            statusCode: 404,
+        });
+
+        expect(
+            deleteCartItemRepositoryMock,
+        ).not.toHaveBeenCalled();
+    });
+
+    // Garante que somente itens pertencentes ao carrinho
+    // do usuário possam ser removidos.
+    it('não deve remover item que não pertence ao carrinho', async () => {
+        findCartItemByIdRepositoryMock.mockResolvedValue(
+            null,
+        );
+
+        await expect(
+            deleteCartItem(3, 999),
+        ).rejects.toMatchObject({
+            message:
+                'Item do carrinho não encontrado.',
+            statusCode: 404,
+        });
+
+        expect(
+            deleteCartItemRepositoryMock,
+        ).not.toHaveBeenCalled();
     });
 });

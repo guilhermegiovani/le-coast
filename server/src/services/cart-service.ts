@@ -4,7 +4,10 @@ import {
   createCartRepository,
   findCartByUserIdRepository,
   findCartItemByVariantRepository,
+  findCartItemByIdRepository,
   createCartItemRepository,
+  updateCartItemRepository,
+  deleteCartItemRepository,
 } from '../repositories/cart-repository.js';
 
 import {
@@ -98,4 +101,111 @@ export async function addCartItem(
   });
 }
 
-// passou no typecheck, proximo passo provavelmente é criar cart service test
+/**
+ * Atualiza a quantidade de um item do carrinho.
+ *
+ * O item precisa pertencer ao carrinho do usuário e a nova
+ * quantidade não pode ultrapassar o estoque disponível.
+ */
+export async function updateCartItem(
+  userId: number,
+  cartItemId: number,
+  quantity: number,
+) {
+  if (
+    !Number.isInteger(quantity) ||
+    quantity <= 0
+  ) {
+    throw new AppError(
+      'A quantidade deve ser maior que zero.',
+      400,
+    );
+  }
+
+  const cart =
+    await findCartByUserIdRepository(userId);
+
+  if (!cart) {
+    throw new AppError(
+      'Carrinho não encontrado.',
+      404,
+    );
+  }
+
+  const cartItem =
+    await findCartItemByIdRepository(
+      cartItemId,
+      cart.id,
+    );
+
+  if (!cartItem) {
+    throw new AppError(
+      'Item do carrinho não encontrado.',
+      404,
+    );
+  }
+
+  const variants =
+    await findActiveProductVariantsByIds([
+      cartItem.variantId,
+    ]);
+
+  const variant = variants[0];
+
+  if (!variant) {
+    throw new AppError(
+      'Variação do produto não encontrada ou está indisponível.',
+      404,
+    );
+  }
+
+  if (quantity > variant.stock) {
+    throw new AppError(
+      `Estoque insuficiente para a variação ${variant.sku}.`,
+      400,
+    );
+  }
+
+  return updateCartItemRepository(
+    cartItemId,
+    quantity,
+  );
+}
+
+/**
+ * Remove um item do carrinho.
+ *
+ * Antes da remoção, garantimos que o item pertence
+ * ao carrinho do usuário autenticado.
+ */
+export async function deleteCartItem(
+  userId: number,
+  cartItemId: number,
+) {
+  const cart =
+    await findCartByUserIdRepository(userId);
+
+  if (!cart) {
+    throw new AppError(
+      'Carrinho não encontrado.',
+      404,
+    );
+  }
+
+  const cartItem =
+    await findCartItemByIdRepository(
+      cartItemId,
+      cart.id,
+    );
+
+  if (!cartItem) {
+    throw new AppError(
+      'Item do carrinho não encontrado.',
+      404,
+    );
+  }
+
+  return deleteCartItemRepository(
+    cartItemId,
+  );
+}
