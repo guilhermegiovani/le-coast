@@ -2,23 +2,19 @@ import { z } from 'zod';
 
 // Representa cada item enviado para a criação do pedido.
 //
-// Neste momento variantId ainda não possui FK no banco,
-// mas continua sendo obrigatório no contrato da aplicação.
+// O cliente informa apenas a variante e a quantidade.
+// O preço será obtido pelo backend diretamente da ProductVariant.
 export const createOrderItemSchema = z.object({
   quantity: z
     .number()
     .int()
     .positive('A quantidade deve ser maior que zero.'),
 
-  unitPrice: z
-    .number()
-    .nonnegative('O preço unitário não pode ser negativo.'),
-
   variantId: z
     .number()
     .int()
     .positive('A variação informada é inválida.'),
-});
+}).strict();
 
 // Representa o endereço utilizado no pedido.
 //
@@ -51,7 +47,7 @@ export const createOrderSchema = z.object({
 export type CreateOrderInput =
   z.infer<typeof createOrderSchema>;
 
-  // Define os status permitidos em uma atualização de pedido.
+// Define os status permitidos em uma atualização de pedido.
 export const updateOrderStatusSchema = z.object({
   status: z.enum([
     'PENDING',

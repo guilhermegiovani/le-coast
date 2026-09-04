@@ -23,7 +23,6 @@ const VALID_ORDER = {
   items: [
     {
       quantity: 2,
-      unitPrice: 79.9,
       variantId: 1,
     },
   ],
@@ -69,6 +68,24 @@ describe('createOrderSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  // Garante que o cliente não possa informar
+  // o preço durante a criação do pedido.
+  it('não deve aceitar unitPrice no item', () => {
+    const result =
+      createOrderSchema.safeParse({
+        ...VALID_ORDER,
+        items: [
+          {
+            quantity: 1,
+            variantId: 1,
+            unitPrice: 999.99,
+          },
+        ],
+      });
+
+    expect(result.success).toBe(false);
+  });
+
   // Garante que a quantidade seja representada
   // somente por números inteiros.
   it('não deve aceitar quantidade decimal', () => {
@@ -79,24 +96,6 @@ describe('createOrderSchema', () => {
           {
             quantity: 1.5,
             unitPrice: 79.9,
-            variantId: 1,
-          },
-        ],
-      });
-
-    expect(result.success).toBe(false);
-  });
-
-  // Garante que preços negativos não sejam
-  // aceitos na criação do pedido.
-  it('não deve aceitar preço negativo', () => {
-    const result =
-      createOrderSchema.safeParse({
-        ...VALID_ORDER,
-        items: [
-          {
-            quantity: 1,
-            unitPrice: -10,
             variantId: 1,
           },
         ],

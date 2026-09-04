@@ -37,11 +37,6 @@ export async function createUserOrder(
 
     const variants = await findActiveProductVariantsByIds(variantIds);
 
-    console.log({
-        variantIds,
-        variants,
-    });
-
     // Todas as variações enviadas pelo cliente precisam existir
     // e estar disponíveis para venda.
     if (variants.length !== variantIds.length) {

@@ -75,12 +75,10 @@ const VALID_ORDER_INPUT = {
   items: [
     {
       quantity: 2,
-      unitPrice: 79.9,
       variantId: 1,
     },
     {
       quantity: 1,
-      unitPrice: 49.9,
       variantId: 2,
     },
   ],
@@ -236,7 +234,6 @@ describe('createUserOrder', () => {
         items: [
           {
             quantity: 2,
-            unitPrice: 79.9,
             variantId: 1,
           },
         ],
@@ -274,9 +271,9 @@ describe('createUserOrder', () => {
     });
   });
 
-  // Garante que o preço utilizado no pedido seja
-  // o preço da variante e não o valor enviado pelo cliente.
-  it('deve utilizar o preço da variante ao invés do preço enviado pelo cliente', async () => {
+  // Garante que o preço persistido no item do pedido
+  // seja obtido diretamente da ProductVariant.
+  it('deve utilizar o preço da variante ao criar o pedido', async () => {
     createOrderRepositoryMock.mockResolvedValue({
       address: null,
       createdAt: new Date(),
@@ -298,7 +295,6 @@ describe('createUserOrder', () => {
         items: [
           {
             quantity: 1,
-            unitPrice: 999.99,
             variantId: 1,
           },
         ],
@@ -337,7 +333,6 @@ describe('createUserOrder', () => {
           items: [
             {
               quantity: 11,
-              unitPrice: 79.9,
               variantId: 1,
             },
           ],
@@ -379,7 +374,6 @@ describe('createUserOrder', () => {
           items: [
             {
               quantity: 0,
-              unitPrice: 79.9,
               variantId: 1,
             },
           ],
@@ -403,7 +397,6 @@ describe('createUserOrder', () => {
           items: [
             {
               quantity: 1,
-              unitPrice: 79.9,
               variantId: 999,
             },
           ],

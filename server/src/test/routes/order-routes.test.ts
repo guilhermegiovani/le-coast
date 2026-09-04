@@ -57,7 +57,6 @@ const VALID_ORDER_INPUT = {
   items: [
     {
       quantity: 2,
-      unitPrice: 79.9,
       variantId: 1,
     },
   ],

@@ -62,6 +62,9 @@ model User {
   // um usuário pode possuir vários pedidos.
   orders Order[]
 
+  // Um usuário possui um único carrinho ativo.
+  cart Cart?
+
   // Mantém o model como User no Prisma/TypeScript,
   // mas utiliza "users" como nome da tabela no PostgreSQL.
   @@map("users")
@@ -527,10 +530,76 @@ model ProductVariant {
   // não devem ser simplesmente apagadas do banco.
   orderItems OrderItem[]
 
+  // Um carrinho pode possuir esta variante como item.
+  cartItems CartItem[]
+
   // Impede que a mesma combinação de produto,
   // tamanho e cor seja cadastrada mais de uma vez.
   @@unique([productId, sizeId, colorId])
   // Facilita consultas das variações de determinado produto.
   @@index([productId])
   @@map("product_variants")
+}
+
+// Representa o carrinho persistente de um usuário autenticado.
+//
+// Cada usuário possui um único carrinho ativo.
+// Carrinhos de visitantes continuam sendo responsabilidade
+// do frontend e podem ser sincronizados após autenticação.
+model Cart {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Usuário dono do carrinho.
+  userId Int @unique @map("user_id")
+
+  // Datas de criação e atualização do carrinho.
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Cada carrinho pertence a um único usuário.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Um carrinho pode possuir vários itens.
+  items CartItem[]
+
+  @@map("carts")
+}
+
+// Representa uma variante adicionada ao carrinho.
+//
+// O preço é armazenado como snapshot do momento em que
+// a variante foi adicionada ao carrinho.
+model CartItem {
+  // Chave primária gerada automaticamente pelo PostgreSQL.
+  id Int @id @default(autoincrement())
+
+  // Carrinho ao qual o item pertence.
+  cartId Int @map("cart_id")
+
+  // Variante de produto escolhida.
+  variantId Int @map("variant_id")
+
+  // Quantidade desejada da variante.
+  quantity Int
+
+  // Preço da variante no momento da inclusão no carrinho.
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2)
+
+  // Datas de criação e atualização do item.
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Se o carrinho for removido, seus itens deixam de ter utilidade.
+  cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  // Mantemos a relação com a variante sem cascade para não
+  // apagar dados do catálogo por causa de um item do carrinho.
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  // Impede que a mesma variante apareça duas vezes
+  // dentro do mesmo carrinho.
+  @@unique([cartId, variantId])
+  @@index([variantId])
+  @@map("cart_items")
 }
