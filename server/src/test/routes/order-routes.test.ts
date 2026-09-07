@@ -11,6 +11,7 @@ import { app } from '../../app.js';
 import { generateAccessToken } from '../../lib/jwt.js';
 
 import {
+  createOrderFromCart,
   createUserOrder,
   getUserOrderById,
   listUserOrders,
@@ -20,11 +21,16 @@ import {
 // Simula o service para que os testes HTTP
 // não acessem o banco real.
 vi.mock('../../services/order-service.js', () => ({
+  createOrderFromCart: vi.fn(),
   createUserOrder: vi.fn(),
   getUserOrderById: vi.fn(),
   listUserOrders: vi.fn(),
   updateOrderStatus: vi.fn(),
 }));
+
+const createOrderFromCartMock = vi.mocked(
+  createOrderFromCart,
+);
 
 const createUserOrderMock = vi.mocked(
   createUserOrder,
@@ -196,6 +202,94 @@ describe('POST /orders', () => {
         items: VALID_ORDER_INPUT.items,
       }),
     );
+  });
+});
+
+describe('POST /orders/checkout', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que somente usuários autenticados
+  // consigam finalizar o checkout.
+  it('deve retornar 401 sem autenticação', async () => {
+    await request(app)
+      .post('/orders/checkout')
+      .send({
+        city: 'Ribeirão Preto',
+        complement: 'Apto 12',
+        country: 'BR',
+        name: 'Casa',
+        neighborhood: 'Centro',
+        number: '100',
+        state: 'SP',
+        street: 'Rua Exemplo',
+        zipCode: '14000-000',
+      })
+      .expect(401);
+
+    expect(
+      createOrderFromCartMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que o usuário autenticado consiga
+  // criar um pedido utilizando seu carrinho.
+  it('deve criar um pedido a partir do carrinho', async () => {
+    const accessToken = generateAccessToken({
+      id: 3,
+      role: 'CUSTOMER',
+    });
+
+    createOrderFromCartMock.mockResolvedValue({
+      address: null,
+      createdAt: new Date(),
+      id: 1,
+      items: [],
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'PENDING',
+      totalAmount: 159.8 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    const address = {
+      city: 'Ribeirão Preto',
+      complement: 'Apto 12',
+      country: 'BR',
+      name: 'Casa',
+      neighborhood: 'Centro',
+      number: '100',
+      state: 'SP',
+      street: 'Rua Exemplo',
+      zipCode: '14000-000',
+    };
+
+    const response = await request(app)
+      .post('/orders/checkout')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .send(address)
+      .expect(201);
+
+    expect(
+      createOrderFromCartMock,
+    ).toHaveBeenCalledWith(
+      3,
+      address,
+    );
+
+    expect(response.body).toMatchObject({
+      id: 1,
+      paymentStatus: 'PENDING',
+      status: 'PENDING',
+      totalAmount: 159.8,
+      userId: 3,
+    });
   });
 });
 

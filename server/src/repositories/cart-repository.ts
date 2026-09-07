@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma.js';
+import type { Prisma } from '../generated/prisma/client.js';
 
 /**
  * Busca o carrinho pertencente a um usuário.
@@ -157,6 +158,25 @@ export async function deleteCartItemRepository(
   return prisma.cartItem.delete({
     where: {
       id: cartItemId,
+    },
+  });
+}
+
+/**
+ * Remove todos os itens de um carrinho.
+ *
+ * É utilizado após a criação do pedido para impedir
+ * que os mesmos itens permaneçam no carrinho.
+ */
+export async function clearCartItemsRepository(
+  cartId: number,
+  transaction?: Prisma.TransactionClient,
+) {
+  const transactionClient = transaction ?? prisma;
+
+  return transactionClient.cartItem.deleteMany({
+    where: {
+      cartId,
     },
   });
 }

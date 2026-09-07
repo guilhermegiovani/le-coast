@@ -3,7 +3,13 @@ import {
   type Router as ExpressRouter,
 } from 'express';
 
-import { createOrderController, getOrderByIdController, listOrdersController, updateOrderStatusController } from '../controllers/order-controller.js';
+import {
+  createOrderController,
+  createOrderFromCartController,
+  getOrderByIdController,
+  listOrdersController,
+  updateOrderStatusController,
+} from '../controllers/order-controller.js';
 import { authMiddleware } from '../middlewares/auth-middleware.js';
 import { requireRole } from '../middlewares/role-middleware.js';
 
@@ -16,6 +22,9 @@ orderRoutes.use(authMiddleware);
 
 // Cria um novo pedido para o usuário autenticado.
 orderRoutes.post('/', createOrderController);
+
+// Cria um pedido utilizando os itens do carrinho.
+orderRoutes.post('/checkout', createOrderFromCartController);
 
 // Lista todos os pedidos pertencentes
 // ao usuário autenticado.

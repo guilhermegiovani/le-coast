@@ -4,7 +4,13 @@ import type {
 } from 'express';
 
 import { AppError } from '../errors/app-error.js';
-import { createUserOrder, getUserOrderById, listUserOrders, updateOrderStatus } from '../services/order-service.js';
+import {
+  createOrderFromCart,
+  createUserOrder,
+  getUserOrderById,
+  listUserOrders,
+  updateOrderStatus,
+} from '../services/order-service.js';
 
 // Cria um novo pedido para o usuário autenticado.
 export async function createOrderController(
@@ -23,6 +29,31 @@ export async function createOrderController(
   // O userId vem exclusivamente do JWT.
   // O cliente envia apenas endereço e itens do pedido.
   const order = await createUserOrder(
+    request.user.id,
+    request.body,
+  );
+
+  return response.status(201).json(order);
+}
+
+// Cria um pedido utilizando os itens presentes
+// no carrinho do usuário autenticado.
+export async function createOrderFromCartController(
+  request: Request,
+  response: Response,
+) {
+  // A rota utiliza authMiddleware, mas esta guarda
+  // também garante ao TypeScript que request.user existe.
+  if (!request.user) {
+    throw new AppError(
+      'Usuário não autenticado.',
+      401,
+    );
+  }
+
+  // O usuário informa apenas o endereço do pedido.
+  // Os itens são obtidos diretamente do carrinho.
+  const order = await createOrderFromCart(
     request.user.id,
     request.body,
   );

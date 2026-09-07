@@ -5,6 +5,7 @@ import {
   it,
   vi,
 } from 'vitest';
+
 import {
   createOrderRepository,
   findOrderById,
@@ -14,13 +15,21 @@ import {
 } from '../../repositories/order-repository.js';
 
 import {
+  createOrderFromCart,
   createUserOrder,
   getUserOrderById,
   listUserOrders,
   updateOrderStatus,
 } from '../../services/order-service.js';
 
+import {
+  findCartByUserIdRepository,
+  clearCartItemsRepository,
+} from '../../repositories/cart-repository.js';
+
 import { findActiveProductVariantsByIds } from '../../repositories/product-variant-repository.js';
+
+import { prisma } from '../../config/prisma.js';
 
 // Simula o repository para que os testes do service
 // não utilizem o banco real.
@@ -34,6 +43,17 @@ vi.mock('../../repositories/order-repository.js', () => ({
 
 vi.mock('../../repositories/product-variant-repository.js', () => ({
   findActiveProductVariantsByIds: vi.fn(),
+}));
+
+vi.mock('../../repositories/cart-repository.js', () => ({
+  findCartByUserIdRepository: vi.fn(),
+  clearCartItemsRepository: vi.fn(),
+}));
+
+vi.mock('../../config/prisma.js', () => ({
+  prisma: {
+    $transaction: vi.fn(),
+  },
 }));
 
 const createOrderRepositoryMock = vi.mocked(
@@ -58,6 +78,18 @@ const updateOrderStatusRepositoryMock = vi.mocked(
 
 const findActiveProductVariantsByIdsMock = vi.mocked(
   findActiveProductVariantsByIds,
+);
+
+const findCartByUserIdRepositoryMock = vi.mocked(
+  findCartByUserIdRepository,
+);
+
+const clearCartItemsRepositoryMock = vi.mocked(
+  clearCartItemsRepository,
+);
+
+const transactionMock = vi.mocked(
+  prisma.$transaction,
 );
 
 const VALID_ORDER_INPUT = {
@@ -160,6 +192,25 @@ const VALID_PRODUCT_VARIANTS = [
     colorId: 1,
   },
 ];
+
+const MOCK_CART = {
+  id: 1,
+  userId: 3,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  items: [],
+};
+
+const MOCK_CART_ITEM = {
+  id: 1,
+  cartId: 1,
+  variantId: 1,
+  quantity: 2,
+  unitPrice: 79.9 as never,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  variant: VALID_PRODUCT_VARIANTS[0],
+};
 
 describe('createUserOrder', () => {
   beforeEach(() => {
@@ -406,6 +457,163 @@ describe('createUserOrder', () => {
 
     expect(
       createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+});
+
+describe('createOrderFromCart', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    transactionMock.mockImplementation(
+      async (callback) => {
+        const transactionClient = {};
+
+        return callback(
+          transactionClient as never,
+        );
+      },
+    );
+
+    findCartByUserIdRepositoryMock.mockResolvedValue({
+      ...MOCK_CART,
+      items: [
+        MOCK_CART_ITEM,
+      ],
+    } as never);
+
+    findActiveProductVariantsByIdsMock.mockImplementation(
+      async (variantIds) =>
+        VALID_PRODUCT_VARIANTS.filter((variant) =>
+          variantIds.includes(variant.id),
+        ),
+    );
+
+    createOrderRepositoryMock.mockResolvedValue(
+      {} as never,
+    );
+  });
+
+  // Garante que os itens do carrinho sejam transformados
+  // em itens do pedido utilizando o preço atual da variante.
+  it('deve criar um pedido a partir do carrinho', async () => {
+    await createOrderFromCart(
+      3,
+      VALID_ORDER_INPUT.address,
+    );
+
+    expect(
+      findCartByUserIdRepositoryMock,
+    ).toHaveBeenCalledWith(3);
+
+    expect(
+      createOrderRepositoryMock,
+    ).toHaveBeenCalledWith({
+      userId: 3,
+      data: {
+        address: VALID_ORDER_INPUT.address,
+        items: [
+          {
+            colorName: 'Preto',
+            productName: 'Top Essential',
+            quantity: 2,
+            sizeName: 'M',
+            unitPrice: 79.9,
+            variantId: 1,
+          },
+        ],
+      },
+      totalAmount: 159.8,
+      transaction: expect.anything(),
+    });
+
+    expect(
+      clearCartItemsRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      expect.anything(),
+    );
+  });
+
+  // Garante que um usuário sem carrinho não possa
+  // iniciar o checkout.
+  it('não deve criar pedido sem carrinho', async () => {
+    findCartByUserIdRepositoryMock.mockResolvedValue(
+      null,
+    );
+
+    await expect(
+      createOrderFromCart(
+        3,
+        VALID_ORDER_INPUT.address,
+      ),
+    ).rejects.toMatchObject({
+      message: 'Carrinho não encontrado.',
+      statusCode: 404,
+    });
+
+    expect(
+      createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      clearCartItemsRepositoryMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      transactionMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que um carrinho vazio não possa
+  // gerar um pedido.
+  it('não deve criar pedido com carrinho vazio', async () => {
+    findCartByUserIdRepositoryMock.mockResolvedValue({
+      ...MOCK_CART,
+      items: [],
+    } as never);
+
+    await expect(
+      createOrderFromCart(
+        3,
+        VALID_ORDER_INPUT.address,
+      ),
+    ).rejects.toMatchObject({
+      message: 'O carrinho está vazio.',
+      statusCode: 400,
+    });
+
+    expect(
+      createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      clearCartItemsRepositoryMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      transactionMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que o carrinho não seja limpo quando
+  // a criação do pedido falhar dentro da transação.
+  it('não deve limpar o carrinho quando a criação do pedido falhar', async () => {
+    createOrderRepositoryMock.mockRejectedValue(
+      new Error('Erro ao criar pedido.'),
+    );
+
+    await expect(
+      createOrderFromCart(
+        3,
+        VALID_ORDER_INPUT.address,
+      ),
+    ).rejects.toThrow(
+      'Erro ao criar pedido.',
+    );
+
+    expect(
+      clearCartItemsRepositoryMock,
     ).not.toHaveBeenCalled();
   });
 });
