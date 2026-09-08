@@ -27,7 +27,10 @@ import {
   clearCartItemsRepository,
 } from '../../repositories/cart-repository.js';
 
-import { findActiveProductVariantsByIds } from '../../repositories/product-variant-repository.js';
+import {
+  decrementProductVariantStockRepository,
+  findActiveProductVariantsByIds,
+} from '../../repositories/product-variant-repository.js';
 
 import { prisma } from '../../config/prisma.js';
 
@@ -42,6 +45,7 @@ vi.mock('../../repositories/order-repository.js', () => ({
 }));
 
 vi.mock('../../repositories/product-variant-repository.js', () => ({
+  decrementProductVariantStockRepository: vi.fn(),
   findActiveProductVariantsByIds: vi.fn(),
 }));
 
@@ -78,6 +82,10 @@ const updateOrderStatusRepositoryMock = vi.mocked(
 
 const findActiveProductVariantsByIdsMock = vi.mocked(
   findActiveProductVariantsByIds,
+);
+
+const decrementProductVariantStockRepositoryMock = vi.mocked(
+  decrementProductVariantStockRepository,
 );
 
 const findCartByUserIdRepositoryMock = vi.mocked(
@@ -216,14 +224,26 @@ describe('createUserOrder', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Disponibiliza variantes válidas para os testes
-    // que exercitam a criação de pedidos.
+    transactionMock.mockImplementation(
+      async (callback) => {
+        const transactionClient = {};
+
+        return callback(
+          transactionClient as never,
+        );
+      },
+    );
+
     findActiveProductVariantsByIdsMock.mockImplementation(
       async (variantIds) =>
         VALID_PRODUCT_VARIANTS.filter((variant) =>
           variantIds.includes(variant.id),
         ),
     );
+
+    decrementProductVariantStockRepositoryMock.mockResolvedValue({
+      count: 1,
+    });
   });
 
   // Garante que o valor total seja calculado
@@ -260,6 +280,7 @@ describe('createUserOrder', () => {
         ],
       },
       totalAmount: 209.7,
+      transaction: expect.anything(),
       userId: 3,
     });
   });
@@ -318,6 +339,7 @@ describe('createUserOrder', () => {
         ],
       },
       totalAmount: 159.8,
+      transaction: expect.anything(),
       userId: 3,
     });
   });
@@ -369,6 +391,7 @@ describe('createUserOrder', () => {
         ],
       },
       totalAmount: 79.9,
+      transaction: expect.anything(),
       userId: 3,
     });
   });
@@ -533,6 +556,14 @@ describe('createOrderFromCart', () => {
       1,
       expect.anything(),
     );
+
+    expect(
+      decrementProductVariantStockRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      2,
+      expect.anything(),
+    );
   });
 
   // Garante que um usuário sem carrinho não possa
@@ -611,6 +642,33 @@ describe('createOrderFromCart', () => {
     ).rejects.toThrow(
       'Erro ao criar pedido.',
     );
+
+    expect(
+      clearCartItemsRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que o pedido seja rejeitado quando a baixa
+  // do estoque de uma variante não for realizada.
+  it('não deve criar pedido quando a baixa do estoque falhar', async () => {
+    decrementProductVariantStockRepositoryMock.mockResolvedValue({
+      count: 0,
+    });
+
+    await expect(
+      createOrderFromCart(
+        3,
+        VALID_ORDER_INPUT.address,
+      ),
+    ).rejects.toMatchObject({
+      message:
+        'Estoque insuficiente para uma ou mais variações do pedido.',
+      statusCode: 400,
+    });
+
+    expect(
+      createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
 
     expect(
       clearCartItemsRepositoryMock,

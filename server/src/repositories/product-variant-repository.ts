@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma.js';
+import type { Prisma } from '../generated/prisma/client.js';
 
 /**
  * Busca variações ativas pelos seus identificadores.
@@ -156,6 +157,34 @@ export async function updateProductVariantRepository(
       product: true,
       size: true,
       color: true,
+    },
+  });
+}
+
+/**
+ * Baixa o estoque de uma variante de forma atômica.
+ *
+ * A condição stock >= quantity impede que uma atualização
+ * reduza o estoque abaixo de zero mesmo em operações concorrentes.
+ */
+export async function decrementProductVariantStockRepository(
+  variantId: number,
+  quantity: number,
+  transaction?: Prisma.TransactionClient,
+) {
+  const transactionClient = transaction ?? prisma;
+
+  return transactionClient.productVariant.updateMany({
+    where: {
+      id: variantId,
+      stock: {
+        gte: quantity,
+      },
+    },
+    data: {
+      stock: {
+        decrement: quantity,
+      },
     },
   });
 }

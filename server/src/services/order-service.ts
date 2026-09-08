@@ -7,7 +7,10 @@ import {
     findOrderById,
 } from '../repositories/order-repository.js';
 
-import { findActiveProductVariantsByIds } from '../repositories/product-variant-repository.js';
+import {
+    decrementProductVariantStockRepository,
+    findActiveProductVariantsByIds,
+} from '../repositories/product-variant-repository.js';
 
 import {
     createOrderSchema,
@@ -38,9 +41,14 @@ export async function createUserOrder(
 ) {
     const input = createOrderSchema.parse(data);
 
-    return createOrder(
-        userId,
-        input,
+    return prisma.$transaction(
+        async (transactionClient) => {
+            return createOrder(
+                userId,
+                input,
+                transactionClient,
+            );
+        },
     );
 }
 
@@ -126,6 +134,27 @@ async function createOrder(
             };
         },
     );
+
+    // Baixa o estoque de cada variante dentro da mesma transação
+    // utilizada para criar o pedido.
+    for (const item of orderItems) {
+        const result =
+            await decrementProductVariantStockRepository(
+                item.variantId,
+                item.quantity,
+                transactionClient,
+            );
+
+        // A condição stock >= quantity é verificada diretamente
+        // no banco. Se nenhuma linha for atualizada, o estoque mudou
+        // entre a validação e a baixa.
+        if (result.count === 0) {
+            throw new AppError(
+                'Estoque insuficiente para uma ou mais variações do pedido.',
+                400,
+            );
+        }
+    }
 
     // Calcula o total utilizando os preços oficiais
     // recuperados diretamente do banco.
