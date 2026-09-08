@@ -5,6 +5,7 @@ import {
   it,
   vi,
 } from 'vitest';
+
 import {
   createOrderRepository,
   findOrderById,
@@ -14,11 +15,24 @@ import {
 } from '../../repositories/order-repository.js';
 
 import {
+  createOrderFromCart,
   createUserOrder,
   getUserOrderById,
   listUserOrders,
   updateOrderStatus,
 } from '../../services/order-service.js';
+
+import {
+  findCartByUserIdRepository,
+  clearCartItemsRepository,
+} from '../../repositories/cart-repository.js';
+
+import {
+  decrementProductVariantStockRepository,
+  findActiveProductVariantsByIds,
+} from '../../repositories/product-variant-repository.js';
+
+import { prisma } from '../../config/prisma.js';
 
 // Simula o repository para que os testes do service
 // não utilizem o banco real.
@@ -28,6 +42,22 @@ vi.mock('../../repositories/order-repository.js', () => ({
   findOrderByIdAndUserId: vi.fn(),
   findOrdersByUserId: vi.fn(),
   updateOrderStatusRepository: vi.fn(),
+}));
+
+vi.mock('../../repositories/product-variant-repository.js', () => ({
+  decrementProductVariantStockRepository: vi.fn(),
+  findActiveProductVariantsByIds: vi.fn(),
+}));
+
+vi.mock('../../repositories/cart-repository.js', () => ({
+  findCartByUserIdRepository: vi.fn(),
+  clearCartItemsRepository: vi.fn(),
+}));
+
+vi.mock('../../config/prisma.js', () => ({
+  prisma: {
+    $transaction: vi.fn(),
+  },
 }));
 
 const createOrderRepositoryMock = vi.mocked(
@@ -50,6 +80,26 @@ const updateOrderStatusRepositoryMock = vi.mocked(
   updateOrderStatusRepository,
 );
 
+const findActiveProductVariantsByIdsMock = vi.mocked(
+  findActiveProductVariantsByIds,
+);
+
+const decrementProductVariantStockRepositoryMock = vi.mocked(
+  decrementProductVariantStockRepository,
+);
+
+const findCartByUserIdRepositoryMock = vi.mocked(
+  findCartByUserIdRepository,
+);
+
+const clearCartItemsRepositoryMock = vi.mocked(
+  clearCartItemsRepository,
+);
+
+const transactionMock = vi.mocked(
+  prisma.$transaction,
+);
+
 const VALID_ORDER_INPUT = {
   address: {
     city: 'Ribeirão Preto',
@@ -65,38 +115,140 @@ const VALID_ORDER_INPUT = {
   items: [
     {
       quantity: 2,
-      unitPrice: 79.9,
       variantId: 1,
     },
     {
       quantity: 1,
-      unitPrice: 49.9,
       variantId: 2,
     },
   ],
 };
 
+const VALID_PRODUCT_VARIANTS = [
+  {
+    id: 1,
+    product: {
+      id: 1,
+      categoryId: 1,
+      name: 'Top Essential',
+      slug: 'top-essential',
+      description: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    size: {
+      id: 1,
+      name: 'M',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    color: {
+      id: 1,
+      name: 'Preto',
+      hexCode: '#000000',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    sku: 'TOP-ESS-M-PRETO',
+    price: 79.9 as never,
+    stock: 10,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    productId: 1,
+    sizeId: 1,
+    colorId: 1,
+  },
+  {
+    id: 2,
+    product: {
+      id: 2,
+      categoryId: 1,
+      name: 'Short Essential',
+      slug: 'short-essential',
+      description: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    size: {
+      id: 1,
+      name: 'M',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    color: {
+      id: 1,
+      name: 'Preto',
+      hexCode: '#000000',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    sku: 'SHORT-ESS-M-PRETO',
+    price: 49.9 as never,
+    stock: 10,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    productId: 2,
+    sizeId: 1,
+    colorId: 1,
+  },
+];
+
+const MOCK_CART = {
+  id: 1,
+  userId: 3,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  items: [],
+};
+
+const MOCK_CART_ITEM = {
+  id: 1,
+  cartId: 1,
+  variantId: 1,
+  quantity: 2,
+  unitPrice: 79.9 as never,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  variant: VALID_PRODUCT_VARIANTS[0],
+};
+
 describe('createUserOrder', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    transactionMock.mockImplementation(
+      async (callback) => {
+        const transactionClient = {};
+
+        return callback(
+          transactionClient as never,
+        );
+      },
+    );
+
+    findActiveProductVariantsByIdsMock.mockImplementation(
+      async (variantIds) =>
+        VALID_PRODUCT_VARIANTS.filter((variant) =>
+          variantIds.includes(variant.id),
+        ),
+    );
+
+    decrementProductVariantStockRepositoryMock.mockResolvedValue({
+      count: 1,
+    });
   });
 
   // Garante que o valor total seja calculado
   // no backend a partir dos itens do pedido.
   it('deve calcular corretamente o valor total do pedido', async () => {
-    createOrderRepositoryMock.mockResolvedValue({
-      address: null,
-      createdAt: new Date(),
-      id: 1,
-      items: [],
-      paymentGateway: null,
-      paymentId: null,
-      paymentStatus: 'PENDING',
-      status: 'PENDING',
-      totalAmount: 209.7 as never,
-      updatedAt: new Date(),
-      userId: 3,
-    });
 
     await createUserOrder(
       3,
@@ -106,8 +258,29 @@ describe('createUserOrder', () => {
     expect(
       createOrderRepositoryMock,
     ).toHaveBeenCalledWith({
-      data: VALID_ORDER_INPUT,
+      data: {
+        address: VALID_ORDER_INPUT.address,
+        items: [
+          {
+            colorName: 'Preto',
+            productName: 'Top Essential',
+            quantity: 2,
+            sizeName: 'M',
+            unitPrice: 79.9,
+            variantId: 1,
+          },
+          {
+            colorName: 'Preto',
+            productName: 'Short Essential',
+            quantity: 1,
+            sizeName: 'M',
+            unitPrice: 49.9,
+            variantId: 2,
+          },
+        ],
+      },
       totalAmount: 209.7,
+      transaction: expect.anything(),
       userId: 3,
     });
   });
@@ -115,19 +288,6 @@ describe('createUserOrder', () => {
   // Garante que os dados sejam validados e normalizados
   // antes de chegarem à camada de persistência.
   it('deve normalizar os dados antes de criar o pedido', async () => {
-    createOrderRepositoryMock.mockResolvedValue({
-      address: null,
-      createdAt: new Date(),
-      id: 1,
-      items: [],
-      paymentGateway: null,
-      paymentId: null,
-      paymentStatus: 'PENDING',
-      status: 'PENDING',
-      totalAmount: 159.8 as never,
-      updatedAt: new Date(),
-      userId: 3,
-    });
 
     await createUserOrder(
       3,
@@ -146,7 +306,6 @@ describe('createUserOrder', () => {
         items: [
           {
             quantity: 2,
-            unitPrice: 79.9,
             variantId: 1,
           },
         ],
@@ -170,15 +329,94 @@ describe('createUserOrder', () => {
         },
         items: [
           {
+            colorName: 'Preto',
+            productName: 'Top Essential',
             quantity: 2,
+            sizeName: 'M',
+            unitPrice: 79.9,
+            variantId: 1,
+          }
+        ],
+      },
+      totalAmount: 159.8,
+      transaction: expect.anything(),
+      userId: 3,
+    });
+  });
+
+  // Garante que o preço persistido no item do pedido
+  // seja obtido diretamente da ProductVariant.
+  it('deve utilizar o preço da variante ao criar o pedido', async () => {
+    createOrderRepositoryMock.mockResolvedValue({
+      address: null,
+      createdAt: new Date(),
+      id: 1,
+      items: [],
+      paymentGateway: null,
+      paymentId: null,
+      paymentStatus: 'PENDING',
+      status: 'PENDING',
+      totalAmount: 79.9 as never,
+      updatedAt: new Date(),
+      userId: 3,
+    });
+
+    await createUserOrder(
+      3,
+      {
+        ...VALID_ORDER_INPUT,
+        items: [
+          {
+            quantity: 1,
+            variantId: 1,
+          },
+        ],
+      },
+    );
+
+    expect(
+      createOrderRepositoryMock,
+    ).toHaveBeenCalledWith({
+      data: {
+        address: VALID_ORDER_INPUT.address,
+        items: [
+          {
+            colorName: 'Preto',
+            productName: 'Top Essential',
+            quantity: 1,
+            sizeName: 'M',
             unitPrice: 79.9,
             variantId: 1,
           },
         ],
       },
-      totalAmount: 159.8,
+      totalAmount: 79.9,
+      transaction: expect.anything(),
       userId: 3,
     });
+  });
+
+  // Garante que o pedido seja rejeitado quando
+  // a quantidade solicitada ultrapassar o estoque disponível.
+  it('não deve criar pedido com estoque insuficiente', async () => {
+    await expect(
+      createUserOrder(
+        3,
+        {
+          ...VALID_ORDER_INPUT,
+          items: [
+            {
+              quantity: 11,
+              variantId: 1,
+            },
+          ],
+        },
+      ),
+    ).rejects.toBeDefined();
+
+    expect(
+      createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
   });
 
   // Garante que pedidos inválidos sejam rejeitados
@@ -210,7 +448,6 @@ describe('createUserOrder', () => {
           items: [
             {
               quantity: 0,
-              unitPrice: 79.9,
               variantId: 1,
             },
           ],
@@ -220,6 +457,221 @@ describe('createUserOrder', () => {
 
     expect(
       createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que o pedido seja rejeitado quando
+  // uma variante informada não existir ou não estiver disponível.
+  it('não deve criar pedido com variante inexistente', async () => {
+    await expect(
+      createUserOrder(
+        3,
+        {
+          ...VALID_ORDER_INPUT,
+          items: [
+            {
+              quantity: 1,
+              variantId: 999,
+            },
+          ],
+        },
+      ),
+    ).rejects.toBeDefined();
+
+    expect(
+      createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+});
+
+describe('createOrderFromCart', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    transactionMock.mockImplementation(
+      async (callback) => {
+        const transactionClient = {};
+
+        return callback(
+          transactionClient as never,
+        );
+      },
+    );
+
+    findCartByUserIdRepositoryMock.mockResolvedValue({
+      ...MOCK_CART,
+      items: [
+        MOCK_CART_ITEM,
+      ],
+    } as never);
+
+    findActiveProductVariantsByIdsMock.mockImplementation(
+      async (variantIds) =>
+        VALID_PRODUCT_VARIANTS.filter((variant) =>
+          variantIds.includes(variant.id),
+        ),
+    );
+
+    createOrderRepositoryMock.mockResolvedValue(
+      {} as never,
+    );
+  });
+
+  // Garante que os itens do carrinho sejam transformados
+  // em itens do pedido utilizando o preço atual da variante.
+  it('deve criar um pedido a partir do carrinho', async () => {
+    await createOrderFromCart(
+      3,
+      VALID_ORDER_INPUT.address,
+    );
+
+    expect(
+      findCartByUserIdRepositoryMock,
+    ).toHaveBeenCalledWith(3);
+
+    expect(
+      createOrderRepositoryMock,
+    ).toHaveBeenCalledWith({
+      userId: 3,
+      data: {
+        address: VALID_ORDER_INPUT.address,
+        items: [
+          {
+            colorName: 'Preto',
+            productName: 'Top Essential',
+            quantity: 2,
+            sizeName: 'M',
+            unitPrice: 79.9,
+            variantId: 1,
+          },
+        ],
+      },
+      totalAmount: 159.8,
+      transaction: expect.anything(),
+    });
+
+    expect(
+      clearCartItemsRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      expect.anything(),
+    );
+
+    expect(
+      decrementProductVariantStockRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      2,
+      expect.anything(),
+    );
+  });
+
+  // Garante que um usuário sem carrinho não possa
+  // iniciar o checkout.
+  it('não deve criar pedido sem carrinho', async () => {
+    findCartByUserIdRepositoryMock.mockResolvedValue(
+      null,
+    );
+
+    await expect(
+      createOrderFromCart(
+        3,
+        VALID_ORDER_INPUT.address,
+      ),
+    ).rejects.toMatchObject({
+      message: 'Carrinho não encontrado.',
+      statusCode: 404,
+    });
+
+    expect(
+      createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      clearCartItemsRepositoryMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      transactionMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que um carrinho vazio não possa
+  // gerar um pedido.
+  it('não deve criar pedido com carrinho vazio', async () => {
+    findCartByUserIdRepositoryMock.mockResolvedValue({
+      ...MOCK_CART,
+      items: [],
+    } as never);
+
+    await expect(
+      createOrderFromCart(
+        3,
+        VALID_ORDER_INPUT.address,
+      ),
+    ).rejects.toMatchObject({
+      message: 'O carrinho está vazio.',
+      statusCode: 400,
+    });
+
+    expect(
+      createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      clearCartItemsRepositoryMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      transactionMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que o carrinho não seja limpo quando
+  // a criação do pedido falhar dentro da transação.
+  it('não deve limpar o carrinho quando a criação do pedido falhar', async () => {
+    createOrderRepositoryMock.mockRejectedValue(
+      new Error('Erro ao criar pedido.'),
+    );
+
+    await expect(
+      createOrderFromCart(
+        3,
+        VALID_ORDER_INPUT.address,
+      ),
+    ).rejects.toThrow(
+      'Erro ao criar pedido.',
+    );
+
+    expect(
+      clearCartItemsRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que o pedido seja rejeitado quando a baixa
+  // do estoque de uma variante não for realizada.
+  it('não deve criar pedido quando a baixa do estoque falhar', async () => {
+    decrementProductVariantStockRepositoryMock.mockResolvedValue({
+      count: 0,
+    });
+
+    await expect(
+      createOrderFromCart(
+        3,
+        VALID_ORDER_INPUT.address,
+      ),
+    ).rejects.toMatchObject({
+      message:
+        'Estoque insuficiente para uma ou mais variações do pedido.',
+      statusCode: 400,
+    });
+
+    expect(
+      createOrderRepositoryMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      clearCartItemsRepositoryMock,
     ).not.toHaveBeenCalled();
   });
 });

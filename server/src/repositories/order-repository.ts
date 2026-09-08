@@ -1,11 +1,24 @@
 import type { CreateOrderInput } from '../validators/order-validator.js';
 import type { OrderStatus } from '../generated/prisma/client.js';
 import { prisma } from '../config/prisma.js';
+import type { Prisma } from '../generated/prisma/client.js';
 
-type CreateOrderRepositoryInput = {
+type CreateOrderRepositoryItem = {
+  variantId: number;
+  productName: string;
+  sizeName: string;
+  colorName: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+type CreateOrderRepositoryParams = {
   userId: number;
-  data: CreateOrderInput;
+  data: Omit<CreateOrderInput, 'items'> & {
+    items: CreateOrderRepositoryItem[];
+  };
   totalAmount: number;
+  transaction?: Prisma.TransactionClient;
 };
 
 // Cria o pedido, o snapshot do endereço e seus itens
@@ -17,10 +30,13 @@ export async function createOrderRepository({
   userId,
   data,
   totalAmount,
-}: CreateOrderRepositoryInput) {
-  return prisma.$transaction(async (transaction) => {
+  transaction,
+}: CreateOrderRepositoryParams) {
+  const createOrder = async (
+    transactionClient: Prisma.TransactionClient,
+  ) => {
     // Cria primeiro o registro principal do pedido.
-    const order = await transaction.order.create({
+    const order = await transactionClient.order.create({
       data: {
         totalAmount,
         userId,
@@ -28,19 +44,12 @@ export async function createOrderRepository({
     });
 
     // Copia o endereço utilizado na compra.
-    //
-    // Esse snapshot não depende mais do Address original,
-    // preservando o histórico do pedido.
-    await transaction.orderAddress.create({
+    await transactionClient.orderAddress.create({
       data: {
         city: data.address.city,
-
-        // Campos opcionais só são enviados ao Prisma
-        // quando realmente possuem um valor.
         ...(data.address.complement !== undefined && {
           complement: data.address.complement,
         }),
-
         country: data.address.country,
         name: data.address.name,
         neighborhood: data.address.neighborhood,
@@ -53,18 +62,20 @@ export async function createOrderRepository({
     });
 
     // Cria todos os itens pertencentes ao pedido.
-    await transaction.orderItem.createMany({
+    await transactionClient.orderItem.createMany({
       data: data.items.map((item) => ({
         orderId: order.id,
+        variantId: item.variantId,
+        productName: item.productName,
+        sizeName: item.sizeName,
+        colorName: item.colorName,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        variantId: item.variantId,
       })),
     });
 
-    // Retorna o pedido completo já com o endereço
-    // e os itens persistidos pela transação.
-    return transaction.order.findUniqueOrThrow({
+    // Retorna o pedido completo dentro da mesma transação.
+    return transactionClient.order.findUniqueOrThrow({
       where: {
         id: order.id,
       },
@@ -73,7 +84,16 @@ export async function createOrderRepository({
         items: true,
       },
     });
-  });
+  };
+
+  // Quando uma transação já foi fornecida, reutilizamos a
+  // mesma transação em vez de abrir outra.
+  if (transaction) {
+    return createOrder(transaction);
+  }
+
+  // Fluxo normal: cria uma nova transação para o pedido.
+  return prisma.$transaction(createOrder);
 }
 
 // Busca todos os pedidos pertencentes
