@@ -18,6 +18,10 @@ import {
   updateOrderStatus,
 } from '../../services/order-service.js';
 
+import {
+  createPaymentForOrder,
+} from '../../services/payment-service.js';
+
 // Simula o service para que os testes HTTP
 // não acessem o banco real.
 vi.mock('../../services/order-service.js', () => ({
@@ -26,6 +30,10 @@ vi.mock('../../services/order-service.js', () => ({
   getUserOrderById: vi.fn(),
   listUserOrders: vi.fn(),
   updateOrderStatus: vi.fn(),
+}));
+
+vi.mock('../../services/payment-service.js', () => ({
+  createPaymentForOrder: vi.fn(),
 }));
 
 const createOrderFromCartMock = vi.mocked(
@@ -46,6 +54,10 @@ const getUserOrderByIdMock = vi.mocked(
 
 const updateOrderStatusMock = vi.mocked(
   updateOrderStatus,
+);
+
+const createPaymentForOrderMock = vi.mocked(
+  createPaymentForOrder,
 );
 
 const VALID_ORDER_INPUT = {
@@ -290,6 +302,85 @@ describe('POST /orders/checkout', () => {
       totalAmount: 159.8,
       userId: 3,
     });
+  });
+});
+
+describe('POST /orders/:id/payment', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que apenas usuários autenticados
+  // consigam iniciar um pagamento.
+  it('deve retornar 401 quando o token não for informado', async () => {
+    await request(app)
+      .post('/orders/1/payment')
+      .expect(401);
+
+    expect(
+      createPaymentForOrderMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que um usuário autenticado consiga
+  // iniciar o pagamento de seu pedido.
+  it('deve iniciar o pagamento do pedido', async () => {
+    const accessToken =
+      generateAccessToken({
+        id: 3,
+        role: 'CUSTOMER',
+      });
+
+    createPaymentForOrderMock.mockResolvedValue({
+      preferenceId: 'PREF-123',
+      checkoutUrl:
+        'https://www.mercadopago.com.br/checkout/PREF-123',
+    });
+
+    const response =
+      await request(app)
+        .post('/orders/1/payment')
+        .set(
+          'Authorization',
+          `Bearer ${accessToken}`,
+        )
+        .expect(201);
+
+    expect(
+      createPaymentForOrderMock,
+    ).toHaveBeenCalledWith(
+      1,
+      expect.anything(),
+      'MERCADO_PAGO',
+    );
+
+    expect(response.body).toEqual({
+      preferenceId: 'PREF-123',
+      checkoutUrl:
+        'https://www.mercadopago.com.br/checkout/PREF-123',
+    });
+  });
+
+  // Garante que identificadores inválidos sejam
+  // rejeitados antes de chegar ao service.
+  it('deve retornar 400 quando o id do pedido for inválido', async () => {
+    const accessToken =
+      generateAccessToken({
+        id: 3,
+        role: 'CUSTOMER',
+      });
+
+    await request(app)
+      .post('/orders/abc/payment')
+      .set(
+        'Authorization',
+        `Bearer ${accessToken}`,
+      )
+      .expect(400);
+
+    expect(
+      createPaymentForOrderMock,
+    ).not.toHaveBeenCalled();
   });
 });
 

@@ -10,6 +10,7 @@ import { addressRoutes } from './routes/address-routes.js';
 import { orderRoutes } from './routes/order-routes.js';
 import { productRoutes } from './routes/product-routes.js';
 import { cartRoutes } from './routes/cart-routes.js';
+import { paymentRoutes } from './routes/payment-routes.js';
 
 // Cria a aplicação Express com tipagem explícita.
 // Isso evita problemas de inferência de tipos
@@ -46,6 +47,9 @@ app.use('/products', productRoutes);
 
 // Registra as rotas do carrinho.
 app.use('/cart', cartRoutes);
+
+// Registra as rotas de pagamento.
+app.use('/', paymentRoutes);
 
 // O middleware global de erros deve ser registrado
 // depois de todas as rotas.

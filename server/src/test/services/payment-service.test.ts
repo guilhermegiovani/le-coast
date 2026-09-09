@@ -1,21 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { findOrderById } from '../../repositories/order-repository.js';
-import { updateOrderPaymentRepository } from '../../repositories/payment-repository.js';
-import { updatePaymentStatus } from '../../services/payment-service.js';
+import {
+  updateOrderPaymentDetailsRepository,
+  updateOrderPaymentRepository,
+} from '../../repositories/payment-repository.js';
+
+import {
+  createPaymentForOrder,
+  updatePaymentStatus,
+} from '../../services/payment-service.js';
+
+import type { PaymentGateway } from '../../services/payment/payment-gateway.js';
 
 vi.mock('../../repositories/order-repository.js', () => ({
   findOrderById: vi.fn(),
 }));
 
 vi.mock('../../repositories/payment-repository.js', () => ({
+  updateOrderPaymentDetailsRepository: vi.fn(),
   updateOrderPaymentRepository: vi.fn(),
 }));
 
 const findOrderByIdMock = vi.mocked(findOrderById);
+
 const updateOrderPaymentRepositoryMock = vi.mocked(
   updateOrderPaymentRepository,
 );
+
+const updateOrderPaymentDetailsRepositoryMock = vi.mocked(
+  updateOrderPaymentDetailsRepository,
+);
+
+const createPaymentMock = vi.fn();
+const getPaymentMock = vi.fn();
+
+const paymentGatewayMock: PaymentGateway = {
+  createPayment: createPaymentMock,
+  getPayment: getPaymentMock,
+};
 
 describe('updatePaymentStatus', () => {
   beforeEach(() => {
@@ -203,6 +226,128 @@ describe('updatePaymentStatus', () => {
     // deve ser executada no banco.
     expect(
       updateOrderPaymentRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+});
+
+describe('createPaymentForOrder', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('deve criar o pagamento utilizando o total do pedido', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      id: 1,
+      userId: 3,
+      status: 'PENDING',
+      paymentStatus: 'PENDING',
+      paymentGateway: null,
+      paymentId: null,
+      totalAmount: 209.7 as never,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    createPaymentMock.mockResolvedValue({
+      preferenceId: 'PREF-123',
+      checkoutUrl:
+        'https://www.mercadopago.com.br/checkout/PREF-123',
+    });
+
+    updateOrderPaymentDetailsRepositoryMock.mockResolvedValue({
+      id: 1,
+      userId: 3,
+      status: 'PENDING',
+      paymentStatus: 'PENDING',
+      paymentGateway: 'MERCADO_PAGO',
+      paymentId: 'PREF-123',
+      totalAmount: 209.7 as never,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const result = await createPaymentForOrder(
+      1,
+      paymentGatewayMock,
+      'MERCADO_PAGO',
+    );
+
+    expect(
+      createPaymentMock,
+    ).toHaveBeenCalledWith({
+      orderId: 1,
+      amount: 209.7,
+    });
+
+    expect(
+      updateOrderPaymentDetailsRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      'MERCADO_PAGO',
+      'PREF-123',
+    );
+
+    expect(result).toEqual({
+      preferenceId: 'PREF-123',
+      checkoutUrl:
+        'https://www.mercadopago.com.br/checkout/PREF-123',
+    });
+  });
+
+  it('deve retornar erro quando o pedido não existir', async () => {
+    findOrderByIdMock.mockResolvedValue(null);
+
+    await expect(
+      createPaymentForOrder(
+        999,
+        paymentGatewayMock,
+        'MERCADO_PAGO',
+      ),
+    ).rejects.toMatchObject({
+      message: 'Pedido não encontrado.',
+      statusCode: 404,
+    });
+
+    expect(
+      createPaymentMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      updateOrderPaymentDetailsRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('não deve criar pagamento para pedido indisponível', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      id: 1,
+      userId: 3,
+      status: 'PROCESSING',
+      paymentStatus: 'PENDING',
+      paymentGateway: null,
+      paymentId: null,
+      totalAmount: 209.7 as never,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await expect(
+      createPaymentForOrder(
+        1,
+        paymentGatewayMock,
+        'MERCADO_PAGO',
+      ),
+    ).rejects.toMatchObject({
+      message:
+        'O pedido não está disponível para pagamento.',
+      statusCode: 400,
+    });
+
+    expect(
+      createPaymentMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      updateOrderPaymentDetailsRepositoryMock,
     ).not.toHaveBeenCalled();
   });
 });

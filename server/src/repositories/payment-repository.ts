@@ -20,3 +20,25 @@ export async function updateOrderPaymentRepository(
     },
   });
 }
+
+/**
+ * Salva os dados externos do pagamento associados ao pedido.
+ *
+ * O gateway e o identificador externo são informações de
+ * integração e não definem, por si só, se o pagamento foi pago.
+ */
+export async function updateOrderPaymentDetailsRepository(
+  orderId: number,
+  paymentGateway: string,
+  paymentId: string,
+) {
+  return prisma.order.update({
+    where: {
+      id: orderId,
+    },
+    data: {
+      paymentGateway,
+      paymentId,
+    },
+  });
+}
