@@ -16,6 +16,7 @@ export type PaymentStatus =
 
 export type PaymentResult = {
     externalId: string;
+    externalReference: string;
     status: PaymentStatus;
 };
 

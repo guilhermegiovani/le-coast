@@ -98,8 +98,39 @@ export async function createPaymentForOrder(
   await updateOrderPaymentDetailsRepository(
     order.id,
     gatewayName,
-    payment.preferenceId,
+    null,
   );
 
   return payment;
+}
+
+/**
+ * Processa o resultado de um pagamento retornado pelo gateway.
+ *
+ * A referência externa identifica o pedido e o status retornado
+ * pelo gateway passa pela mesma validação de transição já usada
+ * pelo fluxo interno de pagamentos.
+ */
+export async function processPaymentWebhook(
+  externalId: string,
+  paymentGateway: PaymentGateway,
+) {
+  const payment = await paymentGateway.getPayment(externalId);
+
+  const orderId = Number(payment.externalReference);
+
+  if (
+    !Number.isInteger(orderId) ||
+    orderId <= 0
+  ) {
+    throw new AppError(
+      'Referência externa do pagamento inválida.',
+      400,
+    );
+  }
+
+  return updatePaymentStatus(
+    orderId,
+    payment.status,
+  );
 }

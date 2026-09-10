@@ -7,6 +7,10 @@ import {
   vi,
 } from 'vitest';
 
+vi.hoisted(() => {
+  process.env.MERCADO_PAGO_WEBHOOK_SECRET = 'test-webhook-secret';
+});
+
 import { app } from '../../app.js';
 import { generateAccessToken } from '../../lib/jwt.js';
 
@@ -20,7 +24,12 @@ import {
 
 import {
   createPaymentForOrder,
+  processPaymentWebhook,
 } from '../../services/payment-service.js';
+
+import {
+  validateWebhookSignature,
+} from '../../services/payment/payment-webhook.js';
 
 // Simula o service para que os testes HTTP
 // não acessem o banco real.
@@ -34,6 +43,11 @@ vi.mock('../../services/order-service.js', () => ({
 
 vi.mock('../../services/payment-service.js', () => ({
   createPaymentForOrder: vi.fn(),
+  processPaymentWebhook: vi.fn(),
+}));
+
+vi.mock('../../services/payment/payment-webhook.js', () => ({
+  validateWebhookSignature: vi.fn(),
 }));
 
 const createOrderFromCartMock = vi.mocked(
@@ -58,6 +72,14 @@ const updateOrderStatusMock = vi.mocked(
 
 const createPaymentForOrderMock = vi.mocked(
   createPaymentForOrder,
+);
+
+const processPaymentWebhookMock = vi.mocked(
+  processPaymentWebhook,
+);
+
+const validateWebhookSignatureMock = vi.mocked(
+  validateWebhookSignature,
 );
 
 const VALID_ORDER_INPUT = {
@@ -698,5 +720,106 @@ describe('PATCH /orders/:id/status', () => {
     expect(
       updateOrderStatusMock,
     ).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /webhooks/mercado-pago', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Garante que uma notificação sem os dados necessários
+  // seja rejeitada antes de processar o pagamento.
+  it('deve retornar 401 quando os dados de assinatura não forem informados', async () => {
+    await request(app)
+      .post('/webhooks/mercado-pago')
+      .query({
+        'data.id': '987654',
+      })
+      .expect(401);
+
+    expect(
+      validateWebhookSignatureMock,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      processPaymentWebhookMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que uma assinatura inválida impeça
+  // qualquer processamento do pagamento.
+  it('deve retornar 401 quando a assinatura for inválida', async () => {
+    validateWebhookSignatureMock.mockReturnValue(false);
+
+    await request(app)
+      .post('/webhooks/mercado-pago')
+      .query({
+        'data.id': '987654',
+      })
+      .set(
+        'x-signature',
+        'ts=1700000000,v1=assinatura-invalida',
+      )
+      .set(
+        'x-request-id',
+        'request-123',
+      )
+      .expect(401);
+
+    expect(
+      validateWebhookSignatureMock,
+    ).toHaveBeenCalled();
+
+    expect(
+      processPaymentWebhookMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que uma notificação válida seja encaminhada
+  // para o processamento do pagamento.
+  it('deve processar uma notificação válida', async () => {
+    validateWebhookSignatureMock.mockReturnValue(true);
+
+    processPaymentWebhookMock.mockResolvedValue({
+      id: 1,
+      userId: 3,
+      status: 'PENDING',
+      paymentStatus: 'PAID',
+      paymentGateway: 'MERCADO_PAGO',
+      paymentId: '987654',
+      totalAmount: 209.7 as never,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const response = await request(app)
+      .post('/webhooks/mercado-pago')
+      .query({
+        'data.id': '987654',
+      })
+      .set(
+        'x-signature',
+        'ts=1700000000,v1=assinatura-valida',
+      )
+      .set(
+        'x-request-id',
+        'request-123',
+      )
+      .expect(200);
+
+    expect(
+      processPaymentWebhookMock,
+    ).toHaveBeenCalledWith(
+      '987654',
+      expect.anything(),
+    );
+
+    expect(response.body).toMatchObject({
+      id: 1,
+      paymentStatus: 'PAID',
+      paymentGateway: 'MERCADO_PAGO',
+      paymentId: '987654',
+    });
   });
 });

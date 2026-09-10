@@ -11,6 +11,7 @@ import { orderRoutes } from './routes/order-routes.js';
 import { productRoutes } from './routes/product-routes.js';
 import { cartRoutes } from './routes/cart-routes.js';
 import { paymentRoutes } from './routes/payment-routes.js';
+import { paymentWebhookRoutes } from './routes/payment-webhook-routes.js';
 
 // Cria a aplicação Express com tipagem explícita.
 // Isso evita problemas de inferência de tipos
@@ -50,6 +51,8 @@ app.use('/cart', cartRoutes);
 
 // Registra as rotas de pagamento.
 app.use('/', paymentRoutes);
+
+app.use('/webhooks', paymentWebhookRoutes);
 
 // O middleware global de erros deve ser registrado
 // depois de todas as rotas.

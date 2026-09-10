@@ -9,6 +9,7 @@ import {
 import {
   createPaymentForOrder,
   updatePaymentStatus,
+  processPaymentWebhook,
 } from '../../services/payment-service.js';
 
 import type { PaymentGateway } from '../../services/payment/payment-gateway.js';
@@ -39,6 +40,7 @@ const paymentGatewayMock: PaymentGateway = {
   createPayment: createPaymentMock,
   getPayment: getPaymentMock,
 };
+
 
 describe('updatePaymentStatus', () => {
   beforeEach(() => {
@@ -260,7 +262,7 @@ describe('createPaymentForOrder', () => {
       status: 'PENDING',
       paymentStatus: 'PENDING',
       paymentGateway: 'MERCADO_PAGO',
-      paymentId: 'PREF-123',
+      paymentId: null,
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -284,7 +286,7 @@ describe('createPaymentForOrder', () => {
     ).toHaveBeenCalledWith(
       1,
       'MERCADO_PAGO',
-      'PREF-123',
+      null,
     );
 
     expect(result).toEqual({
@@ -348,6 +350,82 @@ describe('createPaymentForOrder', () => {
 
     expect(
       updateOrderPaymentDetailsRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+});
+
+describe('processPaymentWebhook', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('deve atualizar o pagamento do pedido retornado pelo gateway', async () => {
+    findOrderByIdMock.mockResolvedValue({
+      id: 1,
+      userId: 3,
+      status: 'PENDING',
+      paymentStatus: 'PENDING',
+      paymentGateway: 'MERCADO_PAGO',
+      paymentId: null,
+      totalAmount: 209.7 as never,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    getPaymentMock.mockResolvedValue({
+      externalId: '987654',
+      externalReference: '1',
+      status: 'PAID',
+    });
+
+    updateOrderPaymentRepositoryMock.mockResolvedValue({
+      id: 1,
+      userId: 3,
+      status: 'PENDING',
+      paymentStatus: 'PAID',
+      paymentGateway: 'MERCADO_PAGO',
+      paymentId: '987654',
+      totalAmount: 209.7 as never,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const result = await processPaymentWebhook(
+      '987654',
+      paymentGatewayMock,
+    );
+
+    expect(
+      getPaymentMock,
+    ).toHaveBeenCalledWith('987654');
+
+    expect(
+      updateOrderPaymentRepositoryMock,
+    ).toHaveBeenCalledWith(1, 'PAID');
+
+    expect(result.paymentStatus).toBe('PAID');
+  });
+
+  it('não deve processar uma referência externa inválida', async () => {
+    getPaymentMock.mockResolvedValue({
+      externalId: '987654',
+      externalReference: 'abc',
+      status: 'PAID',
+    });
+
+    await expect(
+      processPaymentWebhook(
+        '987654',
+        paymentGatewayMock,
+      ),
+    ).rejects.toMatchObject({
+      message:
+        'Referência externa do pagamento inválida.',
+      statusCode: 400,
+    });
+
+    expect(
+      updateOrderPaymentRepositoryMock,
     ).not.toHaveBeenCalled();
   });
 });

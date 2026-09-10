@@ -30,7 +30,7 @@ export async function updateOrderPaymentRepository(
 export async function updateOrderPaymentDetailsRepository(
   orderId: number,
   paymentGateway: string,
-  paymentId: string,
+  paymentId: string | null,
 ) {
   return prisma.order.update({
     where: {

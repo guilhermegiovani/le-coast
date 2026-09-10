@@ -57,13 +57,11 @@ export class MercadoPagoGateway
     async getPayment(
         externalId: string,
     ): Promise<PaymentResult> {
-        const payment =
-            await this.payment.get({
-                id: externalId,
-            });
+        const payment = await this.payment.get({id: externalId});
 
         return {
             externalId: String(payment.id),
+            externalReference: payment.external_reference ?? '',
             status: this.mapPaymentStatus(
                 payment.status,
             ),

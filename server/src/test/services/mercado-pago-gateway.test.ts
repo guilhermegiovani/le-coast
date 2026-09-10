@@ -118,6 +118,7 @@ describe('MercadoPagoGateway', () => {
     it('deve buscar um pagamento e retornar seu status', async () => {
         paymentGetMock.mockResolvedValue({
             id: 123456,
+            external_reference: '1',
             status: 'approved',
         });
 
@@ -137,6 +138,7 @@ describe('MercadoPagoGateway', () => {
 
         expect(result).toEqual({
             externalId: '123456',
+            externalReference: '1',
             status: 'PAID',
         });
     });
@@ -146,6 +148,7 @@ describe('MercadoPagoGateway', () => {
     it('deve mapear pagamento rejeitado para FAILED', async () => {
         paymentGetMock.mockResolvedValue({
             id: 123456,
+            external_reference: '1',
             status: 'rejected',
         });
 
@@ -159,6 +162,7 @@ describe('MercadoPagoGateway', () => {
 
         expect(result).toEqual({
             externalId: '123456',
+            externalReference: '1',
             status: 'FAILED',
         });
     });
@@ -166,6 +170,7 @@ describe('MercadoPagoGateway', () => {
     it('deve mapear pagamento cancelado para FAILED', async () => {
         paymentGetMock.mockResolvedValue({
             id: 123456,
+            external_reference: '1',
             status: 'cancelled',
         });
 
@@ -179,6 +184,7 @@ describe('MercadoPagoGateway', () => {
 
         expect(result).toEqual({
             externalId: '123456',
+            externalReference: '1',
             status: 'FAILED',
         });
     });
@@ -188,6 +194,7 @@ describe('MercadoPagoGateway', () => {
     it('deve mapear pagamento reembolsado para REFUNDED', async () => {
         paymentGetMock.mockResolvedValue({
             id: 123456,
+            external_reference: '1',
             status: 'refunded',
         });
 
@@ -201,6 +208,7 @@ describe('MercadoPagoGateway', () => {
 
         expect(result).toEqual({
             externalId: '123456',
+            externalReference: '1',
             status: 'REFUNDED',
         });
     });
@@ -210,6 +218,7 @@ describe('MercadoPagoGateway', () => {
     it('deve mapear status desconhecido para PENDING', async () => {
         paymentGetMock.mockResolvedValue({
             id: 123456,
+            external_reference: '1',
             status: 'in_process',
         });
 
@@ -223,6 +232,7 @@ describe('MercadoPagoGateway', () => {
 
         expect(result).toEqual({
             externalId: '123456',
+            externalReference: '1',
             status: 'PENDING',
         });
     });
