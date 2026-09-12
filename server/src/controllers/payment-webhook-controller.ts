@@ -34,10 +34,9 @@ export async function paymentWebhookController(
     }
 
     const xSignature = request.headers['x-signature'];
-
     const xRequestId = request.headers['x-request-id'];
-
     const dataId = request.query['data.id'];
+    const type = request.query.type;
 
     if (
         typeof xSignature !== 'string' ||
@@ -50,19 +49,35 @@ export async function paymentWebhookController(
         );
     }
 
-    const isValid =
-        validateWebhookSignature({
-            xSignature,
-            xRequestId,
-            dataId,
-            secret: webhookSecret,
-        });
+    const isValid = validateWebhookSignature({
+        xSignature,
+        xRequestId,
+        dataId,
+        secret: webhookSecret,
+    });
 
     if (!isValid) {
         throw new AppError(
             'Assinatura do webhook inválida.',
             401,
         );
+    }
+
+    if (type !== 'payment') {
+        return response.status(200).json({
+            message: 'Notificação ignorada.',
+        });
+    }
+
+    const action = request.body.action;
+
+    if (
+        action !== 'payment.created' &&
+        action !== 'payment.updated'
+    ) {
+        return response.status(200).json({
+            message: 'Notificação ignorada.',
+        });
     }
 
     const result = await processPaymentWebhook(

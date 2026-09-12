@@ -14,6 +14,11 @@ import {
 
 import type { PaymentGateway } from '../../services/payment/payment-gateway.js';
 
+import {
+  OrderStatus,
+  PaymentStatus,
+} from '../../generated/prisma/client.js';
+
 vi.mock('../../repositories/order-repository.js', () => ({
   findOrderById: vi.fn(),
 }));
@@ -226,6 +231,35 @@ describe('updatePaymentStatus', () => {
 
     // Sem um pedido válido, nenhuma atualização de pagamento
     // deve ser executada no banco.
+    expect(
+      updateOrderPaymentRepositoryMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('deve ignorar uma atualização quando o pagamento já estiver no mesmo status', async () => {
+    const order = {
+      id: 1,
+      userId: 3,
+      status: OrderStatus.PENDING,
+      paymentStatus: PaymentStatus.PAID,
+      paymentGateway: 'MERCADO_PAGO',
+      paymentId: '987654',
+      totalAmount: 209.7 as never,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    findOrderByIdMock.mockResolvedValue(
+      order,
+    );
+
+    const result = await updatePaymentStatus(
+      1,
+      'PAID',
+    );
+
+    expect(result).toBe(order);
+
     expect(
       updateOrderPaymentRepositoryMock,
     ).not.toHaveBeenCalled();

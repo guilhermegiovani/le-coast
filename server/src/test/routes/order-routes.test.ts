@@ -756,6 +756,7 @@ describe('POST /webhooks/mercado-pago', () => {
       .post('/webhooks/mercado-pago')
       .query({
         'data.id': '987654',
+        type: 'payment',
       })
       .set(
         'x-signature',
@@ -765,6 +766,13 @@ describe('POST /webhooks/mercado-pago', () => {
         'x-request-id',
         'request-123',
       )
+      .send({
+        type: 'payment',
+        action: 'payment.updated',
+        data: {
+          id: '987654',
+        },
+      })
       .expect(401);
 
     expect(
@@ -793,10 +801,11 @@ describe('POST /webhooks/mercado-pago', () => {
       updatedAt: new Date(),
     });
 
-    const response = await request(app)
+    const response = await await request(app)
       .post('/webhooks/mercado-pago')
       .query({
         'data.id': '987654',
+        type: 'payment',
       })
       .set(
         'x-signature',
@@ -806,6 +815,13 @@ describe('POST /webhooks/mercado-pago', () => {
         'x-request-id',
         'request-123',
       )
+      .send({
+        type: 'payment',
+        action: 'payment.updated',
+        data: {
+          id: '987654',
+        },
+      })
       .expect(200);
 
     expect(
@@ -821,5 +837,80 @@ describe('POST /webhooks/mercado-pago', () => {
       paymentGateway: 'MERCADO_PAGO',
       paymentId: '987654',
     });
+  });
+
+  // Garante que notificações de outros recursos do Mercado Pago
+  // sejam reconhecidas, mas não processem nenhum pagamento.
+  it('deve ignorar notificações de outros tipos', async () => {
+    validateWebhookSignatureMock.mockReturnValue(true);
+
+    const response = await request(app)
+      .post('/webhooks/mercado-pago')
+      .query({
+        'data.id': '987654',
+        type: 'merchant_order',
+      })
+      .set(
+        'x-signature',
+        'ts=1700000000,v1=assinatura-valida',
+      )
+      .set(
+        'x-request-id',
+        'request-123',
+      )
+      .expect(200);
+
+    expect(response.body).toEqual({
+      message: 'Notificação ignorada.',
+    });
+
+    expect(
+      validateWebhookSignatureMock,
+    ).toHaveBeenCalled();
+
+    expect(
+      processPaymentWebhookMock,
+    ).not.toHaveBeenCalled();
+  });
+
+  // Garante que ações de pagamento que não fazem parte
+  // do fluxo suportado sejam ignoradas sem processar o pagamento.
+  it('deve ignorar ações de pagamento não suportadas', async () => {
+    validateWebhookSignatureMock.mockReturnValue(true);
+
+    const response = await request(app)
+      .post('/webhooks/mercado-pago')
+      .query({
+        'data.id': '987654',
+        type: 'payment',
+      })
+      .set(
+        'x-signature',
+        'ts=1700000000,v1=assinatura-valida',
+      )
+      .set(
+        'x-request-id',
+        'request-123',
+      )
+      .send({
+        type: 'payment',
+        action: 'payment.deleted',
+        data: {
+          id: '987654',
+        },
+      })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      message: 'Notificação ignorada.',
+    });
+
+    expect(
+      validateWebhookSignatureMock,
+    ).toHaveBeenCalled();
+
+    expect(
+      processPaymentWebhookMock,
+    ).not.toHaveBeenCalled();
   });
 });

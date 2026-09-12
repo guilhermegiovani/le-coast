@@ -39,8 +39,11 @@ export async function updatePaymentStatus(
     throw new AppError('Pedido não encontrado.', 404);
   }
 
-  const allowedTransitions =
-    PAYMENT_STATUS_TRANSITIONS[order.paymentStatus];
+  if (order.paymentStatus === newStatus) {
+    return order;
+  }
+
+  const allowedTransitions = PAYMENT_STATUS_TRANSITIONS[order.paymentStatus];
 
   // Impede mudanças de estado que não fazem sentido no
   // ciclo de vida do pagamento.
