@@ -437,6 +437,14 @@ describe('processPaymentWebhook', () => {
       updateOrderPaymentRepositoryMock,
     ).toHaveBeenCalledWith(1, 'PAID');
 
+    expect(
+      updateOrderPaymentDetailsRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      'MERCADO_PAGO',
+      '987654',
+    );
+
     expect(result.paymentStatus).toBe('PAID');
   });
 

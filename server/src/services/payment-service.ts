@@ -132,8 +132,16 @@ export async function processPaymentWebhook(
     );
   }
 
-  return updatePaymentStatus(
+  const order = await updatePaymentStatus(
     orderId,
     payment.status,
   );
+
+  await updateOrderPaymentDetailsRepository(
+    orderId,
+    'MERCADO_PAGO',
+    payment.externalId,
+  );
+
+  return order;
 }
