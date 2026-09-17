@@ -312,8 +312,7 @@ export async function updateOrderStatus(
         );
     }
 
-    const allowedStatuses =
-        ORDER_STATUS_TRANSITIONS[order.status];
+    const allowedStatuses = ORDER_STATUS_TRANSITIONS[order.status];
 
     if (!allowedStatuses.includes(input.status)) {
         throw new AppError(
