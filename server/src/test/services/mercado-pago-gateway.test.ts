@@ -54,6 +54,10 @@ describe('MercadoPagoGateway', () => {
         PaymentMock.mockImplementation(() => ({
             get: paymentGetMock,
         }) as never);
+
+        process.env.MERCADO_PAGO_SUCCESS_URL = 'https://le-coast-web.vercel.app/checkout/confirmation';
+        process.env.MERCADO_PAGO_PENDING_URL = 'https://le-coast-web.vercel.app/checkout/confirmation';
+        process.env.MERCADO_PAGO_FAILURE_URL = 'https://le-coast-web.vercel.app/checkout/confirmation';
     });
 
     // Garante que a criação do pagamento utilize os dados
@@ -70,10 +74,14 @@ describe('MercadoPagoGateway', () => {
             VALID_PAYMENT_INPUT,
         );
 
-        expect(
-            preferenceCreateMock,
-        ).toHaveBeenCalledWith({
+        expect(preferenceCreateMock).toHaveBeenCalledWith({
             body: {
+                back_urls: {
+                    success: 'https://le-coast-web.vercel.app/checkout/confirmation',
+                    pending: 'https://le-coast-web.vercel.app/checkout/confirmation',
+                    failure: 'https://le-coast-web.vercel.app/checkout/confirmation',
+                },
+                auto_return: 'approved',
                 external_reference: '1',
                 items: [
                     {
