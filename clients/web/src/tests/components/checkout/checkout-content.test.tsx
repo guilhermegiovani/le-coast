@@ -4,6 +4,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+
 import {
   beforeEach,
   describe,
@@ -15,9 +16,13 @@ import {
 import { CheckoutContent } from '@/components/checkout/checkout-content';
 
 const {
+  createOrderMock,
+  createPaymentMock,
   getAddressByZipCodeMock,
   useCartStoreMock,
 } = vi.hoisted(() => ({
+  createOrderMock: vi.fn(),
+  createPaymentMock: vi.fn(),
   getAddressByZipCodeMock: vi.fn(),
   useCartStoreMock: vi.fn(),
 }));
@@ -32,7 +37,15 @@ vi.mock('@/stores/cart-store', () => ({
 
 vi.mock('@/services/zip-code-service', () => ({
   getAddressByZipCode: getAddressByZipCodeMock,
-  ZipCodeNotFoundError: class ZipCodeNotFoundError extends Error {},
+  ZipCodeNotFoundError: class ZipCodeNotFoundError extends Error { },
+}));
+
+vi.mock('@/services/order-service', () => ({
+  createOrder: createOrderMock,
+}));
+
+vi.mock('@/services/payment-service', () => ({
+  createPayment: createPaymentMock,
 }));
 
 const CART_ITEMS = [
@@ -173,6 +186,18 @@ describe('CheckoutContent', () => {
         items: CART_ITEMS,
       }),
     );
+
+    createOrderMock.mockReset();
+    createPaymentMock.mockReset();
+
+    createOrderMock.mockResolvedValue({
+      id: 10,
+    });
+
+    createPaymentMock.mockResolvedValue({
+      preferenceId: 'preference-123',
+      checkoutUrl: 'https://mercadopago.com/checkout/123',
+    });
   });
 
   // Garante que o fluxo começa pela etapa de entrega.
@@ -307,5 +332,26 @@ describe('CheckoutContent', () => {
         name: 'Rua',
       }),
     ).toHaveValue('Rua das Flores');
+  });
+
+  // Garante que a finalização cria o pedido e, em seguida,
+  // cria o pagamento utilizando o ID do pedido.
+  it('deve criar o pagamento após criar o pedido', async () => {
+    renderComponent();
+
+    await goToReview();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /finalizar pedido/i,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(createOrderMock).toHaveBeenCalledOnce();
+      expect(createPaymentMock).toHaveBeenCalledOnce();
+    });
+
+    expect(createPaymentMock).toHaveBeenCalledWith(10);
   });
 });

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Container } from '@/components/layout/container';
 import { ProductGallery } from '@/components/products/product-gallery';
 import { ProductInfo } from '@/components/products/product-info';
-import { getProductBySlug } from '@/data/products';
+import { getProducts } from '@/services/product-service';
 
 type ProductDetailsPageProps = {
   params: Promise<{
@@ -16,10 +16,11 @@ export default async function ProductDetailsPage({
 }: ProductDetailsPageProps) {
   const { slug } = await params;
 
-  // Busca o produto na fonte centralizada de dados.
-  const product = getProductBySlug(slug);
+  const products = await getProducts();
 
-  // Exibe a página padrão de não encontrado quando o produto não existe.
+  // A rota utiliza o slug, então localizamos o produto retornado pela API.
+  const product = products.find((item) => item.slug === slug);
+
   if (!product) {
     notFound();
   }
@@ -29,9 +30,8 @@ export default async function ProductDetailsPage({
       <Container>
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-14">
           <ProductGallery productName={product.name} />
-
           <ProductInfo
-            description={product.description}
+            description={product.description ?? ''}
             name={product.name}
             productId={product.id}
             productSlug={product.slug}

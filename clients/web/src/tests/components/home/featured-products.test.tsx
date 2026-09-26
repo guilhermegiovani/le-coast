@@ -1,9 +1,165 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { FeaturedProducts } from '@/components/home/featured-products';
+import { getProducts } from '@/services/product-service';
+import type { Product } from '@/types/product';
 
-// Representa os produtos marcados como destaque na fonte centralizada.
+vi.mock('@/services/product-service', () => ({
+  getProducts: vi.fn(),
+}));
+
+const PRODUCTS: Product[] = [
+  {
+    id: 1,
+    categoryId: 1,
+    name: 'Top Essential',
+    slug: 'top-essential',
+    description: 'Top esportivo feminino.',
+    isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    category: {
+      id: 1,
+      name: 'Fitness',
+      slug: 'fitness',
+    },
+    variants: [
+      {
+        id: 1,
+        productId: 1,
+        sizeId: 1,
+        colorId: 1,
+        sku: 'LC-TEST-PRETO-M',
+        price: 89.9,
+        stock: 10,
+        isActive: true,
+        size: {
+          id: 1,
+          name: 'M',
+          slug: 'm',
+        },
+        color: {
+          id: 1,
+          name: 'Preto',
+          slug: 'preto',
+        },
+      },
+    ],
+  },
+  {
+    id: 2,
+    categoryId: 1,
+    name: 'Legging Move',
+    slug: 'legging-move',
+    description: 'Legging esportiva feminina.',
+    isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    category: {
+      id: 1,
+      name: 'Fitness',
+      slug: 'fitness',
+    },
+    variants: [
+      {
+        id: 2,
+        productId: 2,
+        sizeId: 1,
+        colorId: 1,
+        sku: 'LC-TEST-LEGGING-M',
+        price: 149.9,
+        stock: 10,
+        isActive: true,
+        size: {
+          id: 1,
+          name: 'M',
+          slug: 'm',
+        },
+        color: {
+          id: 1,
+          name: 'Preto',
+          slug: 'preto',
+        },
+      },
+    ],
+  },
+  {
+    id: 3,
+    categoryId: 2,
+    name: 'Maiô Coast',
+    slug: 'maio-coast',
+    description: 'Maiô feminino.',
+    isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    category: {
+      id: 2,
+      name: 'Beachwear',
+      slug: 'beachwear',
+    },
+    variants: [
+      {
+        id: 3,
+        productId: 3,
+        sizeId: 1,
+        colorId: 1,
+        sku: 'LC-TEST-MAIO-M',
+        price: 179.9,
+        stock: 10,
+        isActive: true,
+        size: {
+          id: 1,
+          name: 'M',
+          slug: 'm',
+        },
+        color: {
+          id: 1,
+          name: 'Preto',
+          slug: 'preto',
+        },
+      },
+    ],
+  },
+  {
+    id: 4,
+    categoryId: 2,
+    name: 'Biquíni Sunset',
+    slug: 'biquini-sunset',
+    description: 'Biquíni feminino.',
+    isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    category: {
+      id: 2,
+      name: 'Beachwear',
+      slug: 'beachwear',
+    },
+    variants: [
+      {
+        id: 4,
+        productId: 4,
+        sizeId: 1,
+        colorId: 1,
+        sku: 'LC-TEST-BIQUINI-M',
+        price: 139.9,
+        stock: 10,
+        isActive: true,
+        size: {
+          id: 1,
+          name: 'M',
+          slug: 'm',
+        },
+        color: {
+          id: 1,
+          name: 'Preto',
+          slug: 'preto',
+        },
+      },
+    ],
+  },
+];
+
 const FEATURED_PRODUCTS = [
   {
     href: '/products/top-essential',
@@ -27,11 +183,14 @@ const FEATURED_PRODUCTS = [
   },
 ];
 
-// Agrupa os testes das responsabilidades do componente FeaturedProducts.
 describe('FeaturedProducts', () => {
-  // Garante que o título da seção é renderizado como heading de nível 2.
-  it('deve renderizar o título da seção', () => {
-    render(<FeaturedProducts />);
+  // Configura a resposta da API antes de cada teste.
+  vi.mocked(getProducts).mockResolvedValue(PRODUCTS);
+
+  it('deve renderizar o título da seção', async () => {
+    const page = await FeaturedProducts();
+
+    render(page);
 
     expect(
       screen.getByRole('heading', {
@@ -41,9 +200,10 @@ describe('FeaturedProducts', () => {
     ).toBeInTheDocument();
   });
 
-  // Garante que o link para a listagem completa de produtos está disponível.
-  it('deve renderizar o link Ver todos', () => {
-    render(<FeaturedProducts />);
+  it('deve renderizar o link Ver todos', async () => {
+    const page = await FeaturedProducts();
+
+    render(page);
 
     expect(
       screen.getByRole('link', {
@@ -52,9 +212,10 @@ describe('FeaturedProducts', () => {
     ).toHaveAttribute('href', '/products');
   });
 
-  // Garante que todos os produtos destacados são exibidos na Home.
-  it('deve renderizar os quatro produtos em destaque', () => {
-    render(<FeaturedProducts />);
+  it('deve renderizar os quatro produtos em destaque', async () => {
+    const page = await FeaturedProducts();
+
+    render(page);
 
     expect(
       screen.getAllByRole('heading', {
@@ -63,11 +224,12 @@ describe('FeaturedProducts', () => {
     ).toHaveLength(4);
   });
 
-  // Garante que cada produto exibe seu nome.
   it.each(FEATURED_PRODUCTS)(
     'deve renderizar o produto "$name"',
-    ({ name }) => {
-      render(<FeaturedProducts />);
+    async ({ name }) => {
+      const page = await FeaturedProducts();
+
+      render(page);
 
       expect(
         screen.getByRole('heading', {
@@ -78,11 +240,12 @@ describe('FeaturedProducts', () => {
     },
   );
 
-  // Garante que cada card aponta para a página correta de detalhes.
   it.each(FEATURED_PRODUCTS)(
     'deve renderizar o link correto para "$name"',
-    ({ href, name }) => {
-      render(<FeaturedProducts />);
+    async ({ href, name }) => {
+      const page = await FeaturedProducts();
+
+      render(page);
 
       expect(
         screen.getByRole('link', {
@@ -92,11 +255,12 @@ describe('FeaturedProducts', () => {
     },
   );
 
-  // Garante que os preços vindos das variantes são formatados em reais.
   it.each(FEATURED_PRODUCTS)(
     'deve renderizar o preço de "$name"',
-    ({ price }) => {
-      render(<FeaturedProducts />);
+    async ({ price }) => {
+      const page = await FeaturedProducts();
+
+      render(page);
 
       expect(screen.getByText(price)).toBeInTheDocument();
     },

@@ -2,19 +2,20 @@ import Link from 'next/link';
 
 import { Container } from '@/components/layout/container';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import { getProductPrice, PRODUCTS } from '@/data/products';
-
-// Seleciona apenas os produtos marcados para aparecer na vitrine da Home.
-const featuredProducts = PRODUCTS.filter(
-  (product) => product.featured,
-);
+import { getProducts } from '@/services/product-service';
 
 const priceFormatter = new Intl.NumberFormat('pt-BR', {
   currency: 'BRL',
   style: 'currency',
 });
 
-export function FeaturedProducts() {
+export async function FeaturedProducts() {
+  const products = await getProducts();
+
+  // Temporariamente usamos os primeiros produtos da API enquanto
+  // o catálogo ainda não possui um campo específico para destaque.
+  const featuredProducts = products.slice(0, 4);
+
   return (
     <section
       aria-labelledby="featured-products-title"
@@ -56,7 +57,11 @@ export function FeaturedProducts() {
 
                     <p className="mt-2 text-sm text-foreground">
                       {priceFormatter.format(
-                        getProductPrice(product),
+                        Math.min(
+                          ...product.variants.map(
+                            (variant) => variant.price,
+                          ),
+                        ),
                       )}
                     </p>
                   </CardContent>

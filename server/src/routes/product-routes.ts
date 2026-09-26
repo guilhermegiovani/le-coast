@@ -17,7 +17,7 @@ import { productVariantRoutes } from './product-variant-routes.js';
 export const productRoutes: ExpressRouter = Router();
 
 // Todas as operações desta rota exigem autenticação.
-productRoutes.use(authMiddleware);
+// productRoutes.use(authMiddleware);
 
 // Agrupa as rotas de variantes dentro do produto,
 // mantendo o productId disponível nos parâmetros da URL.
@@ -29,7 +29,7 @@ productRoutes.get('/',listProductsController);
 productRoutes.get('/:id',getProductByIdController);
 
 // Somente administradores podem cadastrar produtos.
-productRoutes.post('/', requireRole('ADMIN'), createProductController);
+productRoutes.post('/', authMiddleware, requireRole('ADMIN'), createProductController);
 
 // Somente administradores podem alterar produtos.
-productRoutes.patch('/:id', requireRole('ADMIN'), updateProductController);
+productRoutes.patch('/:id', authMiddleware, requireRole('ADMIN'), updateProductController);

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import type { ProductVariant } from '@/types/product';
+import { addCartItem, getCart } from '@/services/cart-service';
 
 export type CartItem = {
   productId: number;
@@ -20,7 +21,9 @@ type AddItemParams = {
 
 type CartStore = {
   items: CartItem[];
-  addItem: (item: AddItemParams) => void;
+  isLoading: boolean;
+  loadCart: () => Promise<void>;
+  addItem: (item: AddItemParams) => Promise<void>;
   clearCart: () => void;
   removeItem: (variantId: number) => void;
   updateQuantity: (
@@ -34,48 +37,78 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set) => ({
       items: [],
+      isLoading: false,
 
-      // Adiciona uma variante nova ou aumenta a quantidade caso ela já exista.
-      addItem: ({
+      loadCart: async () => {
+        set({ isLoading: true });
+
+        try {
+          const cart = await getCart();
+
+          set({
+            items: cart.items.map((item) => ({
+              productId: item.variant.product.id,
+              productName: item.variant.product.name,
+              productSlug: item.variant.product.slug,
+              quantity: item.quantity,
+              variant: item.variant,
+            })),
+          });
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Adiciona o item no backend e sincroniza a store com a resposta recebida.
+      addItem: async ({
         productId,
         productName,
         productSlug,
         variant,
-      }) =>
-        set((state) => {
-          const existingItem = state.items.find(
-            (item) => item.variant.id === variant.id,
-          );
+      }) => {
+        set({ isLoading: true });
 
-          if (existingItem) {
+        try {
+          const cartItem = await addCartItem({
+            variantId: variant.id,
+            quantity: 1,
+          });
+
+          set((state) => {
+            const existingItem = state.items.find(
+              (item) => item.variant.id === variant.id,
+            );
+
+            if (existingItem) {
+              return {
+                items: state.items.map((item) =>
+                  item.variant.id === variant.id
+                    ? {
+                      ...item,
+                      quantity: cartItem.quantity,
+                    }
+                    : item,
+                ),
+              };
+            }
+
             return {
-              items: state.items.map((item) =>
-                item.variant.id === variant.id
-                  ? {
-                    ...item,
-                    quantity: Math.min(
-                      item.quantity + 1,
-                      item.variant.stock,
-                    ),
-                  }
-                  : item,
-              ),
+              items: [
+                ...state.items,
+                {
+                  productId,
+                  productName,
+                  productSlug,
+                  quantity: cartItem.quantity,
+                  variant: cartItem.variant,
+                },
+              ],
             };
-          }
-
-          return {
-            items: [
-              ...state.items,
-              {
-                productId,
-                productName,
-                productSlug,
-                quantity: 1,
-                variant,
-              },
-            ],
-          };
-        }),
+          });
+        } finally {
+          set({ isLoading: false });
+        }
+      },
 
       // Remove todos os itens do carrinho.
       clearCart: () => set({ items: [] }),

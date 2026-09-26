@@ -99,16 +99,28 @@ describe('GET /products', () => {
         });
     });
 
-    // A rota precisa exigir autenticação mesmo
-    // sendo apenas uma consulta de catálogo.
-    it('deve retornar 401 sem autenticação', async () => {
-        await request(app)
+    // O catálogo pode ser consultado por visitantes
+    // sem exigir autenticação.
+    it('deve listar produtos sem autenticação', async () => {
+        listProductsMock.mockResolvedValue([
+            MOCK_PRODUCT as never,
+        ]);
+
+        const response = await request(app)
             .get('/products')
-            .expect(401);
+            .expect(200);
 
         expect(
             listProductsMock,
-        ).not.toHaveBeenCalled();
+        ).toHaveBeenCalled();
+
+        expect(response.body).toHaveLength(1);
+
+        expect(response.body[0]).toMatchObject({
+            id: 1,
+            name: 'Top Essential',
+            slug: 'top-essential',
+        });
     });
 });
 

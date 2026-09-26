@@ -20,8 +20,7 @@ import { generateAccessToken } from '../../lib/jwt.js';
 
 // Simula o service para que os testes HTTP
 // não dependam do banco real.
-vi.mock(
-    '../../services/product-variant-service.js',
+vi.mock('../../services/product-variant-service.js',
     () => ({
         createProductVariant: vi.fn(),
         getProductVariantById: vi.fn(),
@@ -105,15 +104,28 @@ describe('GET /products/:productId/variants', () => {
         });
     });
 
-    // Garante que a rota exija autenticação.
-    it('deve retornar 401 sem autenticação', async () => {
-        await request(app)
+    // As variantes podem ser consultadas por visitantes
+    // sem exigir autenticação.
+    it('deve listar as variantes sem autenticação', async () => {
+        listProductVariantsByProductIdMock.mockResolvedValue([
+            MOCK_VARIANT as never,
+        ]);
+
+        const response = await request(app)
             .get('/products/1/variants')
-            .expect(401);
+            .expect(200);
 
         expect(
             listProductVariantsByProductIdMock,
-        ).not.toHaveBeenCalled();
+        ).toHaveBeenCalledWith(1);
+
+        expect(response.body).toHaveLength(1);
+
+        expect(response.body[0]).toMatchObject({
+            id: 1,
+            productId: 1,
+            sku: 'TOP-ESS-M-PRETO',
+        });
     });
 
     // Garante que um productId inválido seja rejeitado

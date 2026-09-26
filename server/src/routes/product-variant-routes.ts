@@ -18,7 +18,7 @@ import { requireRole } from '../middlewares/role-middleware.js';
 export const productVariantRoutes: ExpressRouter = Router({mergeParams: true});
 
 // Todas as operações de variantes exigem autenticação.
-productVariantRoutes.use(authMiddleware);
+// productVariantRoutes.use(authMiddleware);
 
 // Clientes autenticados podem consultar as variantes.
 productVariantRoutes.get('/', listProductVariantsController,);
@@ -26,7 +26,7 @@ productVariantRoutes.get('/', listProductVariantsController,);
 productVariantRoutes.get('/:variantId', getProductVariantByIdController);
 
 // Somente administradores podem criar variantes.
-productVariantRoutes.post('/', requireRole('ADMIN'), createProductVariantController);
+productVariantRoutes.post('/', authMiddleware, requireRole('ADMIN'), createProductVariantController);
 
 // Somente administradores podem alterar variantes.
-productVariantRoutes.patch('/:variantId', requireRole('ADMIN') ,updateProductVariantController);
+productVariantRoutes.patch('/:variantId', authMiddleware, requireRole('ADMIN') ,updateProductVariantController);
