@@ -7,6 +7,7 @@ export type CheckoutStep = 'delivery' | 'payment' | 'review';
 
 type CheckoutSummaryProps = {
   currentStep: CheckoutStep;
+  isFinalizing: boolean;
   onFinalize: () => void;
 };
 
@@ -18,6 +19,7 @@ const priceFormatter = new Intl.NumberFormat('pt-BR', {
 
 export function CheckoutSummary({
   currentStep,
+  isFinalizing,
   onFinalize,
 }: CheckoutSummaryProps) {
   const items = useCartStore((state) => state.items);
@@ -121,10 +123,10 @@ export function CheckoutSummary({
               variant="primary"
               size="lg"
               className="w-full"
-              disabled={items.length === 0}
+              disabled={items.length === 0 || isFinalizing}
               onClick={onFinalize}
             >
-              Finalizar pedido
+              {isFinalizing ? 'Processando pedido...' : 'Finalizar pedido'}
             </Button>
           </div>
         )}

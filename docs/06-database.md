@@ -313,6 +313,12 @@ Representa os pedidos realizados pelos clientes. Um pedido mantém o histórico 
 - O pedido deve manter o histórico da compra.
 - Alterações futuras nos produtos não devem modificar pedidos existentes.
 - Apenas pedidos pagos podem avançar para processamento.
+- O estoque é reservado no momento da criação do pedido.
+- A reserva de estoque permanece ativa enquanto o pedido estiver pendente ou o pagamento puder ser tentado novamente.
+- Uma falha no pagamento não libera automaticamente o estoque reservado.
+- Ao cancelar um pedido com status PENDING, o estoque reservado deve ser devolvido.
+- A criação do pedido e a reserva do estoque devem ocorrer na mesma transação.
+- O cancelamento do pedido e a devolução do estoque devem ocorrer na mesma transação.
 
 ---
 

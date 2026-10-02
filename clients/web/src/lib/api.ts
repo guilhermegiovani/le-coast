@@ -27,3 +27,7 @@ export function setApiAccessToken(
   // um access token antigo.
   delete api.defaults.headers.common.Authorization;
 }
+
+export function hasApiAccessToken() {
+  return Boolean(api.defaults.headers.common.Authorization);
+}

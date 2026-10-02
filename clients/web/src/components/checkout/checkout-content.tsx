@@ -6,12 +6,20 @@ import {
   CheckoutForm,
   type CheckoutFormData,
 } from '@/components/checkout/checkout-form';
+
 import {
   CheckoutPayment,
   type PaymentMethod,
 } from '@/components/checkout/checkout-payment';
+
 import { CheckoutSummary, type CheckoutStep } from '@/components/checkout/checkout-summary';
 import { CheckoutReview } from '@/components/checkout/checkout-review';
+
+import {
+  createOrder,
+} from '@/services/order-service';
+
+import { createPayment } from '@/services/payment-service';
 
 const INITIAL_FORM_DATA: CheckoutFormData = {
   city: '',
@@ -27,14 +35,10 @@ const INITIAL_FORM_DATA: CheckoutFormData = {
 };
 
 export function CheckoutContent() {
-  const [currentStep, setCurrentStep] =
-    useState<CheckoutStep>('delivery');
-
-  const [formData, setFormData] =
-    useState<CheckoutFormData>(INITIAL_FORM_DATA);
-
-  const [paymentMethod, setPaymentMethod] =
-    useState<PaymentMethod | null>(null);
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>('delivery');
+  const [formData, setFormData] = useState<CheckoutFormData>(INITIAL_FORM_DATA);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   // Atualiza somente o campo alterado e preserva os demais dados.
   function handleFormChange(
@@ -55,8 +59,38 @@ export function CheckoutContent() {
     setCurrentStep('review');
   }
 
-  function handleFinalizeOrder() {
-    // A criação real do pedido será implementada com o backend.
+  async function handleFinalizeOrder() {
+    if (isFinalizing) {
+      return;
+    }
+
+    setIsFinalizing(true);
+
+    try {
+      // Primeiro cria o pedido usando o carrinho persistido no backend.
+      const createdOrder = await createOrder({
+        address: {
+          city: formData.city,
+          complement: formData.complement || undefined,
+          country: 'BR',
+          name: formData.name,
+          neighborhood: formData.neighborhood,
+          number: formData.number,
+          state: formData.state,
+          street: formData.street,
+          zipCode: formData.zipCode,
+        },
+      });
+
+      // Com o ID do pedido criado, solicita ao backend a criação
+      // do pagamento no Mercado Pago.
+      const payment = await createPayment(createdOrder.id);
+
+      // Redireciona o cliente para o checkout do Mercado Pago.
+      window.location.href = payment.checkoutUrl;
+    } finally {
+      setIsFinalizing(false);
+    }
   }
 
   return (
@@ -86,6 +120,7 @@ export function CheckoutContent() {
 
       <CheckoutSummary
         currentStep={currentStep}
+        isFinalizing={isFinalizing}
         onFinalize={handleFinalizeOrder}
       />
     </div>

@@ -1,7 +1,7 @@
 import type { CreateOrderInput } from '../validators/order-validator.js';
-import type { OrderStatus } from '../generated/prisma/client.js';
 import { prisma } from '../config/prisma.js';
 import type { Prisma } from '../generated/prisma/client.js';
+import type { OrderStatus } from '../generated/prisma/client.js';
 
 type CreateOrderRepositoryItem = {
   variantId: number;
@@ -140,12 +140,13 @@ export async function findOrderByIdAndUserId(
 }
 
 // Busca um pedido pelo seu identificador.
-export async function findOrderById(
-  orderId: number,
-) {
+export async function findOrderById(orderId: number) {
   return prisma.order.findUnique({
     where: {
       id: orderId,
+    },
+    include: {
+      items: true,
     },
   });
 }
@@ -154,8 +155,11 @@ export async function findOrderById(
 export async function updateOrderStatusRepository(
   orderId: number,
   status: OrderStatus,
+  transaction?: Prisma.TransactionClient,
 ) {
-  return prisma.order.update({
+  const transactionClient = transaction ?? prisma;
+
+  return transactionClient.order.update({
     where: {
       id: orderId,
     },

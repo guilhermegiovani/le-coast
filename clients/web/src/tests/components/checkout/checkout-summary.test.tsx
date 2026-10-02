@@ -81,6 +81,7 @@ function renderComponent(
   render(
     <CheckoutSummary
       currentStep={currentStep}
+      isFinalizing={false}
       onFinalize={onFinalizeMock}
     />,
   );
@@ -184,6 +185,23 @@ describe('CheckoutSummary', () => {
         name: 'Finalizar pedido',
       }),
     ).toBeEnabled();
+  });
+
+  // Garante que o botão fica bloqueado enquanto o pedido está sendo processado.
+  it('deve desabilitar o botão enquanto o pedido está sendo finalizado', () => {
+    render(
+      <CheckoutSummary
+        currentStep="review"
+        isFinalizing={true}
+        onFinalize={onFinalizeMock}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Processando pedido...',
+      }),
+    ).toBeDisabled();
   });
 
   // Garante que a ação final recebida é executada.

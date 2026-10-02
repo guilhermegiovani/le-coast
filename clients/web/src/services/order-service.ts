@@ -44,7 +44,7 @@ export type OrderItem = {
 export type Order = {
     id: number;
     userId: number;
-    totalAmount: number;
+    totalAmount: number | string;
     status: string;
     paymentStatus: string;
     paymentGateway: string | null;
@@ -65,6 +65,12 @@ export async function createOrder(
         data,
     );
 
+    return response.data;
+}
+
+// Busca todos os pedidos do usuário autenticado.
+export async function getOrders(): Promise<Order[]> {
+    const response = await api.get<Order[]>('/orders');
     return response.data;
 }
 

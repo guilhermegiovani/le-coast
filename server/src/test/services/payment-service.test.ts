@@ -63,6 +63,7 @@ describe('updatePaymentStatus', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     });
 
     updateOrderPaymentRepositoryMock.mockResolvedValue({
@@ -97,6 +98,7 @@ describe('updatePaymentStatus', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     });
 
     updateOrderPaymentRepositoryMock.mockResolvedValue({
@@ -131,6 +133,7 @@ describe('updatePaymentStatus', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     });
 
     updateOrderPaymentRepositoryMock.mockResolvedValue({
@@ -165,6 +168,7 @@ describe('updatePaymentStatus', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     });
 
     updateOrderPaymentRepositoryMock.mockResolvedValue({
@@ -202,6 +206,7 @@ describe('updatePaymentStatus', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     });
 
     await expect(
@@ -247,6 +252,7 @@ describe('updatePaymentStatus', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     };
 
     findOrderByIdMock.mockResolvedValue(
@@ -282,6 +288,7 @@ describe('createPaymentForOrder', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     });
 
     createPaymentMock.mockResolvedValue({
@@ -364,6 +371,7 @@ describe('createPaymentForOrder', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     });
 
     await expect(
@@ -404,6 +412,7 @@ describe('processPaymentWebhook', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     });
 
     getPaymentMock.mockResolvedValue({
@@ -459,6 +468,7 @@ describe('processPaymentWebhook', () => {
       totalAmount: 209.7 as never,
       createdAt: new Date(),
       updatedAt: new Date(),
+      items: [],
     });
 
     getPaymentMock.mockResolvedValue({

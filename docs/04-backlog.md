@@ -279,7 +279,7 @@ Permitir que o cliente finalize uma compra e acompanhe seus pedidos.
 - [ ] BK079 - Integrar gateway de pagamento
 - [ ] BK080 - Criar pedido após confirmação do pagamento
 - [ ] BK081 - Atualizar estoque após compra
-- [ ] BK082 - Criar confirmação do pedido
+- [x] BK082 - Criar confirmação do pedido
 - [ ] BK083 - Criar histórico de pedidos
 - [ ] BK084 - Criar página de detalhes do pedido
 - [ ] BK085 - Implementar atualização de status

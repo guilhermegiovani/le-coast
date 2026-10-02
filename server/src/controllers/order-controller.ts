@@ -55,7 +55,7 @@ export async function createOrderFromCartController(
   // Os itens são obtidos diretamente do carrinho.
   const order = await createOrderFromCart(
     request.user.id,
-    request.body,
+    request.body.address,
   );
 
   return response.status(201).json(order);

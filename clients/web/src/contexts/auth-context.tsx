@@ -18,6 +18,8 @@ import {
 
 import { setApiAccessToken } from '@/lib/api';
 
+import { useCartStore } from '@/stores/cart-store';
+
 // Define os dados e ações que ficarão disponíveis
 // globalmente para os componentes da aplicação.
 type AuthContextData = {
@@ -68,6 +70,7 @@ export function AuthProvider({
         setUser(result.user);
         setAccessToken(result.accessToken);
         setApiAccessToken(result.accessToken);
+        await useCartStore.getState().loadCart();
       } catch {
         // A ausência de uma sessão válida é um estado normal
         // para usuários que ainda não fizeram login.
@@ -94,6 +97,7 @@ export function AuthProvider({
     setUser(result.user);
     setAccessToken(result.accessToken);
     setApiAccessToken(result.accessToken);
+    await useCartStore.getState().syncCartWithBackend();
   }
 
   // Encerra a sessão no backend e limpa
@@ -111,6 +115,7 @@ export function AuthProvider({
       // compartilhada da API para impedir que um token antigo
       // continue sendo enviado após o logout.
       setApiAccessToken(null);
+      useCartStore.getState().clearCart();
     }
   }
 

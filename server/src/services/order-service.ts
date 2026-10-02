@@ -10,6 +10,7 @@ import {
 import {
     decrementProductVariantStockRepository,
     findActiveProductVariantsByIds,
+    incrementProductVariantStockRepository,
 } from '../repositories/product-variant-repository.js';
 
 import {
@@ -294,35 +295,39 @@ export async function updateOrderStatus(
     const order = await findOrderById(orderId);
 
     if (!order) {
-        throw new AppError(
-            'Pedido não encontrado.',
-            404,
-        );
+        throw new AppError('Pedido não encontrado.', 404);
     }
 
-    // Um pedido só pode começar a ser processado
-    // depois que o pagamento for confirmado.
-    if (
-        input.status === 'PROCESSING' &&
-        order.paymentStatus !== 'PAID'
-    ) {
+    const allowedStatuses = ORDER_STATUS_TRANSITIONS[order.status];
+
+    if (!allowedStatuses.includes(input.status)) {
+        throw new AppError('Transição de status inválida.', 400);
+    }
+
+    if (input.status === 'PROCESSING' && order.paymentStatus !== 'PAID') {
         throw new AppError(
             'O pedido só pode ser processado após a confirmação do pagamento.',
             400,
         );
     }
 
-    const allowedStatuses = ORDER_STATUS_TRANSITIONS[order.status];
+    if (order.status === 'PENDING' && input.status === 'CANCELLED') {
+        return prisma.$transaction(async (transactionClient) => {
+            for (const item of order.items) {
+                await incrementProductVariantStockRepository(
+                    item.variantId,
+                    item.quantity,
+                    transactionClient,
+                );
+            }
 
-    if (!allowedStatuses.includes(input.status)) {
-        throw new AppError(
-            'Transição de status inválida.',
-            400,
-        );
+            return updateOrderStatusRepository(
+                orderId,
+                'CANCELLED',
+                transactionClient,
+            );
+        });
     }
 
-    return updateOrderStatusRepository(
-        orderId,
-        input.status,
-    );
+    return updateOrderStatusRepository(orderId, input.status);
 }

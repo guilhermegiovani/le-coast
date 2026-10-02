@@ -188,3 +188,29 @@ export async function decrementProductVariantStockRepository(
     },
   });
 }
+
+/**
+ * Devolve ao estoque a quantidade anteriormente reservada.
+ *
+ * Utiliza o mesmo cliente transacional da baixa para garantir
+ * que a liberação possa acontecer na mesma transação do cancelamento
+ * do pedido.
+ */
+export async function incrementProductVariantStockRepository(
+  variantId: number,
+  quantity: number,
+  transaction?: Prisma.TransactionClient,
+) {
+  const transactionClient = transaction ?? prisma;
+
+  return transactionClient.productVariant.updateMany({
+    where: {
+      id: variantId,
+    },
+    data: {
+      stock: {
+        increment: quantity,
+      },
+    },
+  });
+}

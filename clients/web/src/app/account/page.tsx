@@ -4,6 +4,9 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';
+import { Container } from '@/components/layout/container';
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -47,7 +50,7 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <Container className="py-8">
       <h1 className="text-2xl font-semibold text-foreground">
         Minha conta
       </h1>
@@ -55,6 +58,46 @@ export default function AccountPage() {
       <p className="mt-2 text-muted">
         Olá, {user.name}.
       </p>
-    </div>
+
+      <div className="mt-8 grid gap-6 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Meus pedidos</CardTitle>
+            <CardDescription>
+              Consulte seus pedidos e acompanhe o status de cada compra.
+            </CardDescription>
+          </CardHeader>
+
+          <CardFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push('/account/orders')}
+            >
+              Ver meus pedidos
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Meus endereços</CardTitle>
+            <CardDescription>
+              Gerencie os endereços utilizados nas suas compras.
+            </CardDescription>
+          </CardHeader>
+
+          <CardFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push('/account/addresses')}
+            >
+              Gerenciar endereços
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    </Container>
   );
 }

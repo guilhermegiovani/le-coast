@@ -30,9 +30,11 @@ import {
 import {
   decrementProductVariantStockRepository,
   findActiveProductVariantsByIds,
+  incrementProductVariantStockRepository,
 } from '../../repositories/product-variant-repository.js';
 
 import { prisma } from '../../config/prisma.js';
+import { Prisma } from '../../generated/prisma/client.js';
 
 // Simula o repository para que os testes do service
 // não utilizem o banco real.
@@ -47,6 +49,7 @@ vi.mock('../../repositories/order-repository.js', () => ({
 vi.mock('../../repositories/product-variant-repository.js', () => ({
   decrementProductVariantStockRepository: vi.fn(),
   findActiveProductVariantsByIds: vi.fn(),
+  incrementProductVariantStockRepository: vi.fn(),
 }));
 
 vi.mock('../../repositories/cart-repository.js', () => ({
@@ -86,6 +89,10 @@ const findActiveProductVariantsByIdsMock = vi.mocked(
 
 const decrementProductVariantStockRepositoryMock = vi.mocked(
   decrementProductVariantStockRepository,
+);
+
+const incrementProductVariantStockRepositoryMock = vi.mocked(
+  incrementProductVariantStockRepository,
 );
 
 const findCartByUserIdRepositoryMock = vi.mocked(
@@ -722,6 +729,7 @@ describe('getUserOrderById', () => {
   });
 });
 
+
 describe('updateOrderStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -737,6 +745,7 @@ describe('updateOrderStatus', () => {
       paymentId: null,
       paymentStatus: 'PAID',
       status: 'PENDING',
+      items: [],
       totalAmount: 209.7 as never,
       updatedAt: new Date(),
       userId: 3,
@@ -783,6 +792,7 @@ describe('updateOrderStatus', () => {
       paymentId: null,
       paymentStatus: 'PENDING',
       status: 'PENDING',
+      items: [],
       totalAmount: 209.7 as never,
       updatedAt: new Date(),
       userId: 3,
@@ -815,6 +825,7 @@ describe('updateOrderStatus', () => {
       paymentId: null,
       paymentStatus: 'PAID',
       status: 'DELIVERED',
+      items: [],
       totalAmount: 209.7 as never,
       updatedAt: new Date(),
       userId: 3,
@@ -865,6 +876,7 @@ describe('updateOrderStatus', () => {
       paymentId: null,
       paymentStatus: 'PAID',
       status: 'PROCESSING',
+      items: [],
       totalAmount: 209.7 as never,
       updatedAt: new Date(),
       userId: 3,
@@ -909,6 +921,7 @@ describe('updateOrderStatus', () => {
       paymentId: null,
       paymentStatus: 'PAID',
       status: 'SHIPPED',
+      items: [],
       totalAmount: 209.7 as never,
       updatedAt: new Date(),
       userId: 3,
@@ -953,9 +966,26 @@ describe('updateOrderStatus', () => {
       paymentId: null,
       paymentStatus: 'PENDING',
       status: 'PENDING',
+      items: [
+        {
+          id: 1,
+          orderId: 1,
+          variantId: 1,
+          quantity: 2,
+          unitPrice: new Prisma.Decimal(89.9),
+          productName: 'Top Essential',
+          sizeName: 'M',
+          colorName: 'Preto',
+          createdAt: new Date(),
+        },
+      ],
       totalAmount: 209.7 as never,
       updatedAt: new Date(),
       userId: 3,
+    });
+
+    incrementProductVariantStockRepositoryMock.mockResolvedValue({
+      count: 1,
     });
 
     updateOrderStatusRepositoryMock.mockResolvedValue({
@@ -978,10 +1008,19 @@ describe('updateOrderStatus', () => {
     );
 
     expect(
+      incrementProductVariantStockRepositoryMock,
+    ).toHaveBeenCalledWith(
+      1,
+      2,
+      expect.any(Object),
+    );
+
+    expect(
       updateOrderStatusRepositoryMock,
     ).toHaveBeenCalledWith(
       1,
       'CANCELLED',
+      expect.any(Object),
     );
 
     expect(result.status).toBe('CANCELLED');
@@ -995,6 +1034,7 @@ describe('updateOrderStatus', () => {
       paymentId: null,
       paymentStatus: 'PENDING',
       status: 'PENDING',
+      items: [],
       totalAmount: 209.7 as never,
       updatedAt: new Date(),
       userId: 3,

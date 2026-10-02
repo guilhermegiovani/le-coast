@@ -2,9 +2,16 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import type { ProductVariant } from '@/types/product';
-import { addCartItem, getCart } from '@/services/cart-service';
+import {
+  addCartItem,
+  getCart,
+  updateCartItem,
+} from '@/services/cart-service';
+
+import { hasApiAccessToken } from '@/lib/api';
 
 export type CartItem = {
+  id: number;
   productId: number;
   productName: string;
   productSlug: string;
@@ -23,6 +30,7 @@ type CartStore = {
   items: CartItem[];
   isLoading: boolean;
   loadCart: () => Promise<void>;
+  syncCartWithBackend: () => Promise<void>;
   addItem: (item: AddItemParams) => Promise<void>;
   clearCart: () => void;
   removeItem: (variantId: number) => void;
@@ -39,6 +47,8 @@ export const useCartStore = create<CartStore>()(
       items: [],
       isLoading: false,
 
+      // Busca o carrinho do usuário no backend e atualiza o Zustand
+      // com os itens retornados pela API.
       loadCart: async () => {
         set({ isLoading: true });
 
@@ -47,6 +57,64 @@ export const useCartStore = create<CartStore>()(
 
           set({
             items: cart.items.map((item) => ({
+              id: item.id,
+              productId: item.variant.product.id,
+              productName: item.variant.product.name,
+              productSlug: item.variant.product.slug,
+              quantity: item.quantity,
+              variant: item.variant,
+            })),
+          });
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Mescla o carrinho persistido localmente com o carrinho do usuário no backend.
+      // O backend continua sendo a fonte de verdade depois da sincronização.
+      syncCartWithBackend: async () => {
+        set({ isLoading: true });
+
+        try {
+          const backendCart = await getCart();
+
+          const localItems = useCartStore.getState().items;
+
+          for (const localItem of localItems) {
+            const backendItem = backendCart.items.find(
+              (item) => item.variantId === localItem.variant.id,
+            );
+
+            if (!backendItem) {
+              await addCartItem({
+                variantId: localItem.variant.id,
+                quantity: Math.min(
+                  localItem.quantity,
+                  localItem.variant.stock,
+                ),
+              });
+
+              continue;
+            }
+
+            const quantity = Math.min(
+              backendItem.quantity + localItem.quantity,
+              backendItem.variant.stock,
+            );
+
+            await updateCartItem(
+              backendItem.id,
+              quantity,
+            );
+          }
+
+          // Recarrega o carrinho depois do merge para que o Zustand
+          // fique exatamente alinhado com o estado persistido no backend.
+          const synchronizedCart = await getCart();
+
+          set({
+            items: synchronizedCart.items.map((item) => ({
+              id: item.id,
               productId: item.variant.product.id,
               productName: item.variant.product.name,
               productSlug: item.variant.product.slug,
@@ -69,6 +137,46 @@ export const useCartStore = create<CartStore>()(
         set({ isLoading: true });
 
         try {
+          if (!hasApiAccessToken()) {
+            set((state) => {
+              const existingItem = state.items.find(
+                (item) => item.variant.id === variant.id,
+              );
+
+              if (existingItem) {
+                return {
+                  items: state.items.map((item) =>
+                    item.variant.id === variant.id
+                      ? {
+                        ...item,
+                        quantity: Math.min(
+                          item.quantity + 1,
+                          variant.stock,
+                        ),
+                      }
+                      : item,
+                  ),
+                };
+              }
+
+              return {
+                items: [
+                  ...state.items,
+                  {
+                    id: 0,
+                    productId,
+                    productName,
+                    productSlug,
+                    quantity: 1,
+                    variant,
+                  },
+                ],
+              };
+            });
+
+            return;
+          }
+
           const cartItem = await addCartItem({
             variantId: variant.id,
             quantity: 1,
@@ -96,6 +204,7 @@ export const useCartStore = create<CartStore>()(
               items: [
                 ...state.items,
                 {
+                  id: cartItem.id,
                   productId,
                   productName,
                   productSlug,
@@ -122,20 +231,58 @@ export const useCartStore = create<CartStore>()(
         })),
 
       // Atualiza a quantidade respeitando o mínimo de 1 e o estoque disponível.
-      updateQuantity: (variantId, quantity) =>
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.variant.id === variantId
-              ? {
-                ...item,
-                quantity: Math.min(
-                  Math.max(quantity, 1),
-                  item.variant.stock,
-                ),
-              }
-              : item,
-          ),
-        })),
+      updateQuantity: async (variantId, quantity) => {
+        const item = useCartStore.getState().items.find(
+          (cartItem) => cartItem.variant.id === variantId,
+        );
+
+        if (!item) {
+          return;
+        }
+
+        const nextQuantity = Math.min(
+          Math.max(quantity, 1),
+          item.variant.stock,
+        );
+
+        if (!hasApiAccessToken()) {
+          set((state) => ({
+            items: state.items.map((cartItem) =>
+              cartItem.variant.id === variantId
+                ? {
+                  ...cartItem,
+                  quantity: nextQuantity,
+                }
+                : cartItem,
+            ),
+          }));
+
+          return;
+        }
+
+        set({ isLoading: true });
+
+        try {
+          const backendItem = await updateCartItem(
+            item.id,
+            nextQuantity,
+          );
+
+          set((state) => ({
+            items: state.items.map((cartItem) =>
+              cartItem.variant.id === variantId
+                ? {
+                  ...cartItem,
+                  quantity: backendItem.quantity,
+                  variant: backendItem.variant,
+                }
+                : cartItem,
+            ),
+          }));
+        } finally {
+          set({ isLoading: false });
+        }
+      },
     }),
     {
       // Chave utilizada pelo Zustand para salvar o carrinho no localStorage.
