@@ -40,19 +40,41 @@ export function OrderCard({ order }: OrderCardProps) {
                     {formattedDate} · {order.items.length} item(ns) · R$ {Number(order.totalAmount).toFixed(2)}
                 </CardDescription>
 
-                <Badge
-                    variant={
-                        order.status === 'DELIVERED'
-                            ? 'success'
-                            : order.status === 'CANCELLED'
-                                ? 'error'
-                                : order.status === 'PENDING'
-                                    ? 'warning'
-                                    : 'default'
-                    }
-                >
-                    {statusLabels[order.status] ?? order.status}
-                </Badge>
+                <div className="flex flex-wrap gap-2">
+                    <Badge
+                        variant={
+                            order.status === 'DELIVERED'
+                                ? 'success'
+                                : order.status === 'CANCELLED'
+                                    ? 'error'
+                                    : order.status === 'PENDING'
+                                        ? 'warning'
+                                        : 'default'
+                        }
+                    >
+                        {statusLabels[order.status] ?? order.status}
+                    </Badge>
+
+                    <Badge
+                        variant={
+                            order.paymentStatus === 'PAID'
+                                ? 'success'
+                                : order.paymentStatus === 'FAILED'
+                                    ? 'error'
+                                    : order.paymentStatus === 'REFUNDED'
+                                        ? 'warning'
+                                        : 'default'
+                        }
+                    >
+                        {order.paymentStatus === 'PAID'
+                            ? 'Pagamento aprovado'
+                            : order.paymentStatus === 'FAILED'
+                                ? 'Pagamento recusado'
+                                : order.paymentStatus === 'REFUNDED'
+                                    ? 'Pagamento reembolsado'
+                                    : 'Pagamento pendente'}
+                    </Badge>
+                </div>
             </CardHeader>
 
             <CardFooter>

@@ -79,3 +79,15 @@ export async function getOrderById(orderId: number): Promise<Order> {
     const response = await api.get<Order>(`/orders/${orderId}`);
     return response.data;
 }
+
+export async function updateOrderStatus(
+    orderId: number,
+    status: string,
+): Promise<Order> {
+    const response = await api.patch<Order>(
+        `/orders/${orderId}/status`,
+        { status },
+    );
+
+    return response.data;
+}
