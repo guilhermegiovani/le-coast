@@ -118,6 +118,7 @@ export async function processPaymentWebhook(
   externalId: string,
   paymentGateway: PaymentGateway,
 ) {
+
   const payment = await paymentGateway.getPayment(externalId);
 
   const orderId = Number(payment.externalReference);

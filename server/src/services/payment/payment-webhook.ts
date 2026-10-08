@@ -1,5 +1,4 @@
 import crypto from 'node:crypto';
-
 type ValidateWebhookSignatureInput = {
     xSignature: string;
     xRequestId: string;
@@ -21,9 +20,15 @@ export function validateWebhookSignature({
 }: ValidateWebhookSignatureInput): boolean {
     const parts = xSignature.split(',');
 
-    const ts = parts.find((part) => part.trim().startsWith('ts='))?.trim().replace('ts=', '');
+    const ts = parts
+        .find((part) => part.trim().startsWith('ts='))
+        ?.trim()
+        .replace('ts=', '');
 
-    const v1 = parts.find((part) => part.trim().startsWith('v1='))?.trim().replace('v1=', '');
+    const v1 = parts
+        .find((part) => part.trim().startsWith('v1='))
+        ?.trim()
+        .replace('v1=', '');
 
     if (!ts || !v1) {
         return false;
@@ -31,7 +36,10 @@ export function validateWebhookSignature({
 
     const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
 
-    const generatedSignature = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+    const generatedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(manifest)
+        .digest('hex');
 
     if (v1.length !== generatedSignature.length) {
         return false;

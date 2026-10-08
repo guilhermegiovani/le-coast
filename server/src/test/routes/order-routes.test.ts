@@ -307,7 +307,9 @@ describe('POST /orders/checkout', () => {
         'Authorization',
         `Bearer ${accessToken}`,
       )
-      .send(address)
+      .send({
+        address,
+      })
       .expect(201);
 
     expect(

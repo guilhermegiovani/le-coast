@@ -275,15 +275,15 @@ Permitir que o cliente finalize uma compra e acompanhe seus pedidos.
 - [x] BK075 - Criar tabela de itens do pedido
 - [~] BK076 - Criar fluxo de checkout
 - [x] BK077 - Implementar cadastro e seleção de endereço
-- [ ] BK078 - Implementar cálculo de frete
-- [ ] BK079 - Integrar gateway de pagamento
+- [x] BK078 - Implementar cálculo de frete
+- [x] BK079 - Integrar gateway de pagamento
 - [ ] BK080 - Criar pedido após confirmação do pagamento
-- [ ] BK081 - Atualizar estoque após compra
+- [x] BK081 - Atualizar estoque após compra
 - [x] BK082 - Criar confirmação do pedido
-- [ ] BK083 - Criar histórico de pedidos
-- [ ] BK084 - Criar página de detalhes do pedido
-- [ ] BK085 - Implementar atualização de status
-- [~] BK086 - Criar testes do checkout e pedidos
+- [x] BK083 - Criar histórico de pedidos
+- [x] BK084 - Criar página de detalhes do pedido
+- [x] BK085 - Implementar atualização de status
+- [X] BK086 - Criar testes do checkout e pedidos
 
 ---
 
