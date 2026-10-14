@@ -29,7 +29,8 @@ app.use(
     // Permite o frontend local e o endereço público usado no teste.
     origin: [
       'http://localhost:3000',
-      'https://le-coast-web.vercel.app'
+      'https://le-coast-web.vercel.app',
+      'https://le-coast-nw5v42171-guilhermegiovanis-projects.vercel.app'
     ],
     credentials: true,
   }),
