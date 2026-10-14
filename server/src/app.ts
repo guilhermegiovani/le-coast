@@ -30,7 +30,8 @@ app.use(
     origin: [
       'http://localhost:3000',
       'https://le-coast-web.vercel.app',
-      'https://le-coast-nw5v42171-guilhermegiovanis-projects.vercel.app'
+      'https://le-coast-nw5v42171-guilhermegiovanis-projects.vercel.app',
+      'https://le-coast-web-git-feat-order-c-107368-guilhermegiovanis-projects.vercel.app'
     ],
     credentials: true,
   }),
