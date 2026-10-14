@@ -26,7 +26,11 @@ export const app: Express = express();
 // explicitamente a origem do frontend.
 app.use(
   cors({
-    origin: 'http://localhost:3000',
+    // Permite o frontend local e o endereço público usado no teste.
+    origin: [
+      'http://localhost:3000',
+      'https://le-coast-web.vercel.app'
+    ],
     credentials: true,
   }),
 );

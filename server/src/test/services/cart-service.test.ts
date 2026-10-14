@@ -14,6 +14,7 @@ import {
     createCartItemRepository,
     updateCartItemRepository,
     deleteCartItemRepository,
+    clearCartItemsRepository,
 } from '../../repositories/cart-repository.js';
 
 import {
@@ -25,6 +26,7 @@ import {
     addCartItem,
     updateCartItem,
     deleteCartItem,
+    clearCart,
 } from '../../services/cart-service.js';
 
 // Simula os repositories para que os testes do service
@@ -37,6 +39,7 @@ vi.mock('../../repositories/cart-repository.js', () => ({
     findCartItemByIdRepository: vi.fn(),
     updateCartItemRepository: vi.fn(),
     deleteCartItemRepository: vi.fn(),
+    clearCartItemsRepository: vi.fn(),
 }));
 
 vi.mock(
@@ -76,6 +79,10 @@ const updateCartItemRepositoryMock = vi.mocked(
 
 const deleteCartItemRepositoryMock = vi.mocked(
     deleteCartItemRepository,
+);
+
+const clearCartItemsRepositoryMock = vi.mocked(
+    clearCartItemsRepository,
 );
 
 const MOCK_CART = {
@@ -580,6 +587,56 @@ describe('deleteCartItem', () => {
 
         expect(
             deleteCartItemRepositoryMock,
+        ).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('clearCart', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    // Garante que todos os itens do carrinho do usuário sejam removidos.
+    it('deve remover todos os itens do carrinho', async () => {
+        findCartByUserIdRepositoryMock.mockResolvedValue(
+            MOCK_CART as never,
+        );
+
+        clearCartItemsRepositoryMock.mockResolvedValue({
+            count: 4,
+        });
+
+        const result = await clearCart(3);
+
+        expect(
+            findCartByUserIdRepositoryMock,
+        ).toHaveBeenCalledWith(3);
+
+        expect(
+            clearCartItemsRepositoryMock,
+        ).toHaveBeenCalledWith(1);
+
+        expect(result).toEqual({
+            count: 4,
+        });
+    });
+
+    // Garante que não haja exclusão quando o usuário não possui carrinho.
+    it('não deve limpar itens quando o carrinho não existir', async () => {
+        findCartByUserIdRepositoryMock.mockResolvedValue(
+            null,
+        );
+
+        await expect(
+            clearCart(3),
+        ).rejects.toMatchObject({
+            message: 'Carrinho não encontrado.',
+            statusCode: 404,
+        });
+
+        expect(
+            clearCartItemsRepositoryMock,
         ).not.toHaveBeenCalled();
     });
 });

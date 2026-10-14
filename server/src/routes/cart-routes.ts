@@ -5,6 +5,7 @@ import {
 
 import {
     addCartItemController,
+    clearCartController,
     deleteCartItemController,
     getUserCartController,
     updateCartItemController,
@@ -28,3 +29,6 @@ cartRoutes.patch('/items/:id', updateCartItemController);
 
 // Remove um item do carrinho.
 cartRoutes.delete('/items/:id', deleteCartItemController);
+
+// Remove todos os itens do carrinho do usuário autenticado.
+cartRoutes.delete('/items', clearCartController);

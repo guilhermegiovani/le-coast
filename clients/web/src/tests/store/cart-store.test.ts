@@ -1,11 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { useCartStore } from '@/stores/cart-store';
-import { getCart, addCartItem } from '@/services/cart-service';
+import {
+  getCart,
+  addCartItem,
+  clearCartItems,
+  deleteCartItem,
+  updateCartItem,
+} from '@/services/cart-service';
+import { hasApiAccessToken } from '@/lib/api';
+
+vi.mock('@/lib/api', () => ({
+  hasApiAccessToken: vi.fn(),
+}));
 
 vi.mock('@/services/cart-service', () => ({
   getCart: vi.fn(),
   addCartItem: vi.fn(),
+  clearCartItems: vi.fn(),
+  deleteCartItem: vi.fn(),
+  updateCartItem: vi.fn(),
 }));
 
 const FIRST_VARIANT = {
@@ -68,7 +81,7 @@ describe('useCartStore', () => {
   // Limpa o estado da store antes de cada teste para evitar interferência.
   beforeEach(() => {
     vi.clearAllMocks();
-
+    vi.mocked(hasApiAccessToken).mockReturnValue(true);
     useCartStore.setState({
       items: [],
       isLoading: false,
@@ -94,9 +107,9 @@ describe('useCartStore', () => {
     });
 
     await useCartStore.getState().addItem(FIRST_ITEM);
-
     expect(useCartStore.getState().items).toEqual([
       {
+        id: 1,
         ...FIRST_ITEM,
         quantity: 1,
         variant: {
@@ -147,11 +160,9 @@ describe('useCartStore', () => {
 
     await useCartStore.getState().addItem(FIRST_ITEM);
     await useCartStore.getState().addItem(FIRST_ITEM);
-
     expect(useCartStore.getState().items).toHaveLength(1);
     expect(useCartStore.getState().items[0].quantity).toBe(2);
   });
-
   // Garante que a quantidade não ultrapassa o estoque ao adicionar.
   it('deve respeitar o estoque ao adicionar repetidamente', async () => {
     const cartItem = {
@@ -186,7 +197,6 @@ describe('useCartStore', () => {
     await useCartStore.getState().addItem(FIRST_ITEM);
     await useCartStore.getState().addItem(FIRST_ITEM);
     await useCartStore.getState().addItem(FIRST_ITEM);
-
     expect(useCartStore.getState().items[0].quantity).toBe(3);
   });
 
@@ -226,11 +236,10 @@ describe('useCartStore', () => {
 
     await useCartStore.getState().addItem(FIRST_ITEM);
     await useCartStore.getState().addItem(SECOND_ITEM);
-
     expect(useCartStore.getState().items).toHaveLength(2);
-
     expect(useCartStore.getState().items).toEqual([
       {
+        id: 1,
         ...FIRST_ITEM,
         quantity: 1,
         variant: {
@@ -243,6 +252,7 @@ describe('useCartStore', () => {
         },
       },
       {
+        id: 2,
         ...SECOND_ITEM,
         quantity: 1,
         variant: {
@@ -258,59 +268,75 @@ describe('useCartStore', () => {
   });
 
   // Garante que um item pode ser removido pelo ID da variante.
-  it('deve remover um item do carrinho', async () => {
-    vi.mocked(addCartItem)
-      .mockResolvedValueOnce({
-        id: 1,
-        cartId: 1,
-        variantId: FIRST_VARIANT.id,
-        quantity: 1,
-        unitPrice: FIRST_VARIANT.price,
-        variant: {
-          ...FIRST_VARIANT,
-          product: {
-            id: FIRST_ITEM.productId,
-            name: FIRST_ITEM.productName,
-            slug: FIRST_ITEM.productSlug,
-          },
-        },
-      })
-      .mockResolvedValueOnce({
-        id: 2,
-        cartId: 1,
-        variantId: SECOND_VARIANT.id,
-        quantity: 1,
-        unitPrice: SECOND_VARIANT.price,
-        variant: {
-          ...SECOND_VARIANT,
-          product: {
-            id: SECOND_ITEM.productId,
-            name: SECOND_ITEM.productName,
-            slug: SECOND_ITEM.productSlug,
-          },
-        },
-      });
 
-    await useCartStore.getState().addItem(FIRST_ITEM);
-    await useCartStore.getState().addItem(SECOND_ITEM);
+  // Garante que o item seja excluído no backend antes de removê-lo da store.
+  it('deve remover um item do carrinho usando o backend', async () => {
+    useCartStore.setState({
+      items: [
+        { id: 1, ...FIRST_ITEM, quantity: 1 },
+        { id: 2, ...SECOND_ITEM, quantity: 1 },
+      ],
+    });
 
-    useCartStore.getState().removeItem(FIRST_VARIANT.id);
+    vi.mocked(deleteCartItem).mockResolvedValue(undefined);
 
+    await useCartStore.getState().removeItem(FIRST_VARIANT.id);
+
+    expect(deleteCartItem).toHaveBeenCalledOnce();
+    expect(deleteCartItem).toHaveBeenCalledWith(1);
     expect(useCartStore.getState().items).toEqual([
-      {
-        ...SECOND_ITEM,
-        quantity: 1,
-        variant: {
-          ...SECOND_VARIANT,
-          product: {
-            id: SECOND_ITEM.productId,
-            name: SECOND_ITEM.productName,
-            slug: SECOND_ITEM.productSlug,
-          },
-        },
-      },
+      { id: 2, ...SECOND_ITEM, quantity: 1 },
+    ]);
+    expect(useCartStore.getState().isLoading).toBe(false);
+  });
+
+  // Garante que, sem autenticação, o item seja removido apenas localmente.
+  it('deve remover um item localmente sem autenticação', async () => {
+    vi.mocked(hasApiAccessToken).mockReturnValue(false);
+
+    useCartStore.setState({
+      items: [
+        { id: 1, ...FIRST_ITEM, quantity: 1 },
+        { id: 2, ...SECOND_ITEM, quantity: 1 },
+      ],
+    });
+
+    await useCartStore.getState().removeItem(FIRST_VARIANT.id);
+
+    expect(deleteCartItem).not.toHaveBeenCalled();
+    expect(useCartStore.getState().items).toEqual([
+      { id: 2, ...SECOND_ITEM, quantity: 1 },
     ]);
   });
+
+  // Garante que uma falha na API não remova o item da store.
+  it('deve manter o item no carrinho quando a remoção no backend falhar', async () => {
+    useCartStore.setState({
+      items: [{ id: 1, ...FIRST_ITEM, quantity: 1 }],
+    });
+
+    vi.mocked(deleteCartItem).mockRejectedValue(
+      new Error('Falha ao remover o item.'),
+    );
+
+    await expect(
+      useCartStore.getState().removeItem(FIRST_VARIANT.id),
+    ).rejects.toThrow('Falha ao remover o item.');
+
+    expect(useCartStore.getState().items).toEqual([
+      { id: 1, ...FIRST_ITEM, quantity: 1 },
+    ]);
+    expect(useCartStore.getState().isLoading).toBe(false);
+  });
+
+  // Garante que um item inexistente não provoque uma chamada à API.
+  it('não deve chamar o backend quando o item não existir', async () => {
+    await useCartStore.getState().removeItem(FIRST_VARIANT.id);
+
+    expect(deleteCartItem).not.toHaveBeenCalled();
+    expect(useCartStore.getState().items).toEqual([]);
+  });
+
 
   // Garante que a quantidade pode ser atualizada diretamente.
   it('deve atualizar a quantidade de um item', async () => {
@@ -332,8 +358,23 @@ describe('useCartStore', () => {
 
     await useCartStore.getState().addItem(FIRST_ITEM);
 
-    useCartStore.getState().updateQuantity(FIRST_VARIANT.id, 2);
+    vi.mocked(updateCartItem).mockResolvedValue({
+      id: 1,
+      cartId: 1,
+      variantId: FIRST_VARIANT.id,
+      quantity: 2,
+      unitPrice: FIRST_VARIANT.price,
+      variant: {
+        ...FIRST_VARIANT,
+        product: {
+          id: FIRST_ITEM.productId,
+          name: FIRST_ITEM.productName,
+          slug: FIRST_ITEM.productSlug,
+        },
+      },
+    });
 
+    await useCartStore.getState().updateQuantity(FIRST_VARIANT.id, 2);
     expect(useCartStore.getState().items[0].quantity).toBe(2);
   });
 
@@ -356,9 +397,23 @@ describe('useCartStore', () => {
     });
 
     await useCartStore.getState().addItem(FIRST_ITEM);
+    vi.mocked(updateCartItem).mockResolvedValue({
+      id: 1,
+      cartId: 1,
+      variantId: FIRST_VARIANT.id,
+      quantity: 1,
+      unitPrice: FIRST_VARIANT.price,
+      variant: {
+        ...FIRST_VARIANT,
+        product: {
+          id: FIRST_ITEM.productId,
+          name: FIRST_ITEM.productName,
+          slug: FIRST_ITEM.productSlug,
+        },
+      },
+    });
 
-    useCartStore.getState().updateQuantity(FIRST_VARIANT.id, 0);
-
+    await useCartStore.getState().updateQuantity(FIRST_VARIANT.id, 0);
     expect(useCartStore.getState().items[0].quantity).toBe(1);
   });
 
@@ -381,21 +436,36 @@ describe('useCartStore', () => {
     });
 
     await useCartStore.getState().addItem(FIRST_ITEM);
+    vi.mocked(updateCartItem).mockResolvedValue({
+      id: 1,
+      cartId: 1,
+      variantId: FIRST_VARIANT.id,
+      quantity: FIRST_VARIANT.stock,
+      unitPrice: FIRST_VARIANT.price,
+      variant: {
+        ...FIRST_VARIANT,
+        product: {
+          id: FIRST_ITEM.productId,
+          name: FIRST_ITEM.productName,
+          slug: FIRST_ITEM.productSlug,
+        },
+      },
+    });
 
-    useCartStore.getState().updateQuantity(FIRST_VARIANT.id, 10);
-
+    await useCartStore.getState().updateQuantity(FIRST_VARIANT.id, 10);
     expect(useCartStore.getState().items[0].quantity).toBe(
       FIRST_VARIANT.stock,
     );
   });
 
   // Garante que todos os itens podem ser removidos de uma vez.
-  it('deve limpar o carrinho', () => {
-    useCartStore.getState().addItem(FIRST_ITEM);
-    useCartStore.getState().addItem(SECOND_ITEM);
+  it('deve limpar o carrinho local sem chamar o backend', async () => {
+    vi.mocked(hasApiAccessToken).mockReturnValue(false);
 
-    useCartStore.getState().clearCart();
-
+    await useCartStore.getState().addItem(FIRST_ITEM);
+    await useCartStore.getState().addItem(SECOND_ITEM);
+    await useCartStore.getState().clearCart();
+    expect(clearCartItems).not.toHaveBeenCalled();
     expect(useCartStore.getState().items).toEqual([]);
   });
 
@@ -426,9 +496,9 @@ describe('useCartStore', () => {
     });
 
     await useCartStore.getState().loadCart();
-
     expect(useCartStore.getState().items).toEqual([
       {
+        id: 1,
         productId: 1,
         productName: 'Top Essential',
         productSlug: 'top-essential',
@@ -443,7 +513,6 @@ describe('useCartStore', () => {
         },
       },
     ]);
-
     expect(useCartStore.getState().isLoading).toBe(false);
     expect(getCart).toHaveBeenCalledOnce();
   });
@@ -467,15 +536,14 @@ describe('useCartStore', () => {
     });
 
     await useCartStore.getState().addItem(FIRST_ITEM);
-
     expect(addCartItem).toHaveBeenCalledOnce();
     expect(addCartItem).toHaveBeenCalledWith({
       variantId: FIRST_VARIANT.id,
       quantity: 1,
     });
-
     expect(useCartStore.getState().items).toEqual([
       {
+        id: 1,
         productId: FIRST_ITEM.productId,
         productName: FIRST_ITEM.productName,
         productSlug: FIRST_ITEM.productSlug,
@@ -490,7 +558,6 @@ describe('useCartStore', () => {
         },
       },
     ]);
-
     expect(useCartStore.getState().isLoading).toBe(false);
   });
 
@@ -505,6 +572,29 @@ describe('useCartStore', () => {
     ).rejects.toThrow('Falha ao carregar o carrinho.');
 
     expect(useCartStore.getState().isLoading).toBe(false);
+    expect(useCartStore.getState().items).toEqual([]);
+  });
+
+  // Verifica se a limpeza é enviada ao backend antes de atualizar a store.
+  it('deve limpar o carrinho usando o backend', async () => {
+    vi.mocked(clearCartItems).mockResolvedValue(undefined);
+
+    useCartStore.setState({
+      items: [
+        {
+          id: 1,
+          ...FIRST_ITEM,
+          quantity: 1,
+        },
+        {
+          id: 2,
+          ...SECOND_ITEM,
+          quantity: 1,
+        },
+      ],
+    });
+    await useCartStore.getState().clearCart();
+    expect(clearCartItems).toHaveBeenCalledOnce();
     expect(useCartStore.getState().items).toEqual([]);
   });
 });

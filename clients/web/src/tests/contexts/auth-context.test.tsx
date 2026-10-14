@@ -39,6 +39,23 @@ vi.mock('@/services/auth-service', () => ({
 // sem alterar a instância Axios real durante os testes.
 vi.mock('@/lib/api', () => ({
     setApiAccessToken: vi.fn(),
+    hasApiAccessToken: vi.fn(() => true),
+    api: {
+        get: vi.fn(),
+        post: vi.fn(),
+        patch: vi.fn(),
+        delete: vi.fn(),
+    },
+}));
+
+vi.mock('@/stores/cart-store', () => ({
+    useCartStore: {
+        getState: () => ({
+            loadCart: vi.fn().mockResolvedValue(undefined),
+            syncCartWithBackend: vi.fn().mockResolvedValue(undefined),
+            clearCart: vi.fn().mockResolvedValue(undefined),
+        }),
+    },
 }));
 
 const loginApiMock = vi.mocked(loginApi);

@@ -8,6 +8,7 @@ import {
   createCartItemRepository,
   updateCartItemRepository,
   deleteCartItemRepository,
+  clearCartItemsRepository,
 } from '../repositories/cart-repository.js';
 
 import {
@@ -208,4 +209,22 @@ export async function deleteCartItem(
   return deleteCartItemRepository(
     cartItemId,
   );
+}
+
+/**
+ * Remove todos os itens do carrinho do usuário autenticado.
+ *
+ * O carrinho é preservado; somente os itens são excluídos.
+ */
+export async function clearCart(userId: number) {
+  const cart = await findCartByUserIdRepository(userId);
+
+  if (!cart) {
+    throw new AppError(
+      'Carrinho não encontrado.',
+      404,
+    );
+  }
+
+  return clearCartItemsRepository(cart.id);
 }

@@ -12,6 +12,7 @@ import { generateAccessToken } from '../../lib/jwt.js';
 
 import {
     addCartItem,
+    clearCart,
     deleteCartItem,
     getUserCart,
     updateCartItem,
@@ -21,26 +22,21 @@ import {
 // não acessem o banco real.
 vi.mock('../../services/cart-service.js', () => ({
     addCartItem: vi.fn(),
+    clearCart: vi.fn(),
     deleteCartItem: vi.fn(),
     getUserCart: vi.fn(),
     updateCartItem: vi.fn(),
 }));
 
-const addCartItemMock = vi.mocked(
-    addCartItem,
-);
+const addCartItemMock = vi.mocked(addCartItem);
 
-const deleteCartItemMock = vi.mocked(
-    deleteCartItem,
-);
+const clearCartMock = vi.mocked(clearCart);
 
-const getUserCartMock = vi.mocked(
-    getUserCart,
-);
+const deleteCartItemMock = vi.mocked(deleteCartItem);
 
-const updateCartItemMock = vi.mocked(
-    updateCartItem,
-);
+const getUserCartMock = vi.mocked(getUserCart);
+
+const updateCartItemMock = vi.mocked(updateCartItem);
 
 const MOCK_CART = {
     id: 1,
@@ -333,5 +329,44 @@ describe('DELETE /cart/items/:id', () => {
         expect(
             deleteCartItemMock,
         ).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('DELETE /cart/items', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    // Garante que o usuário autenticado consiga esvaziar o próprio carrinho.
+    it('deve esvaziar o carrinho e retornar 204', async () => {
+        const accessToken = generateAccessToken({
+            id: 3,
+            role: 'CUSTOMER',
+        });
+
+        clearCartMock.mockResolvedValue({
+            count: 4,
+        } as never);
+
+        await request(app)
+            .delete('/cart/items')
+            .set(
+                'Authorization',
+                `Bearer ${accessToken}`,
+            )
+            .expect(204);
+
+        expect(clearCartMock).toHaveBeenCalledOnce();
+        expect(clearCartMock).toHaveBeenCalledWith(3);
+    });
+
+    // Garante que o endpoint exija autenticação.
+    it('deve retornar 401 sem autenticação', async () => {
+        await request(app)
+            .delete('/cart/items')
+            .expect(401);
+
+        expect(clearCartMock).not.toHaveBeenCalled();
     });
 });

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useAuth } from '@/contexts/auth-context';
 import { CheckoutConfirmation } from '@/components/checkout/checkout-confirmation';
 import { getOrderById } from '@/services/order-service';
 
@@ -14,6 +15,10 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/services/order-service', () => ({
     getOrderById: vi.fn(),
+}));
+
+vi.mock('@/contexts/auth-context', () => ({
+    useAuth: vi.fn(),
 }));
 
 const ORDER = {
@@ -46,6 +51,20 @@ describe('CheckoutConfirmation', () => {
     beforeEach(() => {
         useSearchParamsMock.mockReset();
         vi.clearAllMocks();
+
+        vi.mocked(useAuth).mockReturnValue({
+            isAuthenticated: true,
+            isLoading: false,
+            accessToken: 'test-access-token',
+            user: {
+                id: 1,
+                name: 'Guilherme Nobre',
+                email: 'guilherme@example.com',
+                role: 'CUSTOMER',
+            },
+            login: vi.fn(),
+            logout: vi.fn(),
+        });
     });
 
     it('deve exibir confirmação para pagamento aprovado', async () => {

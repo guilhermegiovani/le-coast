@@ -4,6 +4,8 @@ import { persist } from 'zustand/middleware';
 import type { ProductVariant } from '@/types/product';
 import {
   addCartItem,
+  clearCartItems,
+  deleteCartItem,
   getCart,
   updateCartItem,
 } from '@/services/cart-service';
@@ -32,7 +34,7 @@ type CartStore = {
   loadCart: () => Promise<void>;
   syncCartWithBackend: () => Promise<void>;
   addItem: (item: AddItemParams) => Promise<void>;
-  clearCart: () => void;
+  clearCart: () => Promise<void>;
   removeItem: (variantId: number) => void;
   updateQuantity: (
     variantId: number,
@@ -220,15 +222,55 @@ export const useCartStore = create<CartStore>()(
       },
 
       // Remove todos os itens do carrinho.
-      clearCart: () => set({ items: [] }),
+      // Exclui os itens persistidos no backend antes de limpar o estado local.
+      clearCart: async () => {
+        if (hasApiAccessToken()) {
+          await clearCartItems();
+        }
+
+        set({ items: [] });
+      },
 
       // Remove uma variante específica do carrinho.
-      removeItem: (variantId) =>
-        set((state) => ({
-          items: state.items.filter(
-            (item) => item.variant.id !== variantId,
-          ),
-        })),
+
+      // Remove uma variante do carrinho local e, quando autenticado,
+      // também exclui o item persistido no backend.
+      removeItem: async (variantId) => {
+        const item = useCartStore.getState().items.find(
+          (cartItem) => cartItem.variant.id === variantId,
+        );
+
+        if (!item) {
+          return;
+        }
+
+        // Sem autenticação, a remoção acontece apenas no carrinho local.
+        if (!hasApiAccessToken()) {
+          set((state) => ({
+            items: state.items.filter(
+              (cartItem) => cartItem.variant.id !== variantId,
+            ),
+          }));
+
+          return;
+        }
+
+        set({ isLoading: true });
+
+        try {
+          // Usa o ID do item do carrinho no backend, não o ID da variante.
+          await deleteCartItem(item.id);
+
+          set((state) => ({
+            items: state.items.filter(
+              (cartItem) => cartItem.variant.id !== variantId,
+            ),
+          }));
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
 
       // Atualiza a quantidade respeitando o mínimo de 1 e o estoque disponível.
       updateQuantity: async (variantId, quantity) => {

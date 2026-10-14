@@ -94,3 +94,10 @@ export async function deleteCartItem(
 ): Promise<void> {
   await api.delete(`/cart/items/${cartItemId}`);
 }
+
+/**
+ * Remove todos os itens do carrinho do usuário autenticado.
+ */
+export async function clearCartItems(): Promise<void> {
+  await api.delete('/cart/items');
+}

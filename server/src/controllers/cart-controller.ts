@@ -7,6 +7,7 @@ import { AppError } from '../errors/app-error.js';
 
 import {
     addCartItem,
+    clearCart,
     deleteCartItem,
     getUserCart,
     updateCartItem,
@@ -134,6 +135,20 @@ export async function deleteCartItemController(
         userId,
         cartItemId,
     );
+
+    return response.status(204).send();
+}
+
+/**
+ * Remove todos os itens do carrinho do usuário autenticado.
+ */
+export async function clearCartController(
+    request: Request,
+    response: Response,
+) {
+    const userId = getAuthenticatedUserId(request);
+
+    await clearCart(userId);
 
     return response.status(204).send();
 }
