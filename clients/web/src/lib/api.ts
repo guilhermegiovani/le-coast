@@ -1,3 +1,38 @@
+// import axios from 'axios';
+
+// // Cria uma instância HTTP compartilhada pela aplicação.
+// // Configurações comuns ficam centralizadas aqui.
+// export const api = axios.create({
+//   baseURL: process.env.NEXT_PUBLIC_API_URL,
+
+//   // Permite que o navegador envie cookies HttpOnly,
+//   // principalmente o refresh token.
+//   withCredentials: true,
+// });
+
+// // Atualiza o access token utilizado nas
+// // requisições autenticadas da aplicação.
+// export function setApiAccessToken(
+//   accessToken: string | null,
+// ) {
+//   if (accessToken) {
+//     api.defaults.headers.common.Authorization =
+//       `Bearer ${accessToken}`;
+
+//     return;
+//   }
+
+//   // Quando não existe sessão autenticada,
+//   // removemos o header para evitar reutilizar
+//   // um access token antigo.
+//   delete api.defaults.headers.common.Authorization;
+// }
+
+// export function hasApiAccessToken() {
+//   return Boolean(api.defaults.headers.common.Authorization);
+// }
+
+
 import axios from 'axios';
 
 // Cria uma instância HTTP compartilhada pela aplicação.
@@ -8,6 +43,12 @@ export const api = axios.create({
   // Permite que o navegador envie cookies HttpOnly,
   // principalmente o refresh token.
   withCredentials: true,
+
+  // Evita a página de aviso do ngrok nas requisições
+  // da API durante os testes com o endpoint gratuito.
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },
 });
 
 // Atualiza o access token utilizado nas
