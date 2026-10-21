@@ -63,26 +63,36 @@ export function AuthProvider({
   // O navegador o envia automaticamente através
   // do cookie HttpOnly.
   useEffect(() => {
+
+    // FAZER COMMIT
+
     async function restoreSession() {
       try {
+        // Primeiro, restaura e valida a sessão do usuário.
         const result = await refreshSession();
 
         setUser(result.user);
         setAccessToken(result.accessToken);
         setApiAccessToken(result.accessToken);
-        await useCartStore.getState().loadCart();
       } catch {
-        // A ausência de uma sessão válida é um estado normal
-        // para usuários que ainda não fizeram login.
+        // Só limpa a autenticação se a restauração da sessão falhar.
         setUser(null);
         setAccessToken(null);
         setApiAccessToken(null);
+        return;
       } finally {
-        // A partir daqui sabemos se existe ou não
-        // uma sessão autenticada.
         setIsLoading(false);
       }
+
+      // O carrinho é independente da autenticação:
+      // se ele falhar, o usuário continua logado.
+      try {
+        await useCartStore.getState().loadCart();
+      } catch (error) {
+        console.error('Erro ao carregar o carrinho:', error);
+      }
     }
+
 
     void restoreSession();
   }, []);
