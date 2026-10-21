@@ -43,6 +43,12 @@ const VALID_PAYMENT_INPUT = {
     amount: 159.8,
 };
 
+const SUCCESS_URL =
+    'https://le-coast-web.vercel.app/checkout/confirmation';
+
+const NOTIFICATION_URL =
+    'https://le-coast-webhook.ngrok-free.app/webhooks/mercado-pago';
+
 describe('MercadoPagoGateway', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -55,9 +61,10 @@ describe('MercadoPagoGateway', () => {
             get: paymentGetMock,
         }) as never);
 
-        process.env.MERCADO_PAGO_SUCCESS_URL = 'https://le-coast-web.vercel.app/checkout/confirmation';
-        process.env.MERCADO_PAGO_PENDING_URL = 'https://le-coast-web.vercel.app/checkout/confirmation';
-        process.env.MERCADO_PAGO_FAILURE_URL = 'https://le-coast-web.vercel.app/checkout/confirmation';
+        process.env.MERCADO_PAGO_SUCCESS_URL = SUCCESS_URL;
+        process.env.MERCADO_PAGO_PENDING_URL = SUCCESS_URL;
+        process.env.MERCADO_PAGO_FAILURE_URL = SUCCESS_URL;
+        process.env.MERCADO_PAGO_NOTIFICATION_URL = NOTIFICATION_URL;
     });
 
     // Garante que a criação do pagamento utilize os dados
@@ -76,10 +83,11 @@ describe('MercadoPagoGateway', () => {
 
         expect(preferenceCreateMock).toHaveBeenCalledWith({
             body: {
+                notification_url: NOTIFICATION_URL,
                 back_urls: {
-                    success: 'https://le-coast-web.vercel.app/checkout/confirmation',
-                    pending: 'https://le-coast-web.vercel.app/checkout/confirmation',
-                    failure: 'https://le-coast-web.vercel.app/checkout/confirmation',
+                    success: SUCCESS_URL,
+                    pending: SUCCESS_URL,
+                    failure: SUCCESS_URL,
                 },
                 auto_return: 'approved',
                 external_reference: '1',
@@ -128,6 +136,8 @@ describe('MercadoPagoGateway', () => {
             id: 123456,
             external_reference: '1',
             status: 'approved',
+            transaction_amount: 159.8,
+            currency_id: 'BRL',
         });
 
         const gateway =
@@ -148,6 +158,8 @@ describe('MercadoPagoGateway', () => {
             externalId: '123456',
             externalReference: '1',
             status: 'PAID',
+            amount: 159.8,
+            currency: 'BRL',
         });
     });
 
@@ -158,6 +170,8 @@ describe('MercadoPagoGateway', () => {
             id: 123456,
             external_reference: '1',
             status: 'rejected',
+            transaction_amount: 159.8,
+            currency_id: 'BRL',
         });
 
         const gateway =
@@ -172,6 +186,8 @@ describe('MercadoPagoGateway', () => {
             externalId: '123456',
             externalReference: '1',
             status: 'FAILED',
+            amount: 159.8,
+            currency: 'BRL',
         });
     });
 
@@ -180,6 +196,8 @@ describe('MercadoPagoGateway', () => {
             id: 123456,
             external_reference: '1',
             status: 'cancelled',
+            transaction_amount: 159.8,
+            currency_id: 'BRL',
         });
 
         const gateway =
@@ -194,6 +212,8 @@ describe('MercadoPagoGateway', () => {
             externalId: '123456',
             externalReference: '1',
             status: 'FAILED',
+            amount: 159.8,
+            currency: 'BRL',
         });
     });
 
@@ -204,6 +224,8 @@ describe('MercadoPagoGateway', () => {
             id: 123456,
             external_reference: '1',
             status: 'refunded',
+            transaction_amount: 159.8,
+            currency_id: 'BRL',
         });
 
         const gateway =
@@ -218,6 +240,8 @@ describe('MercadoPagoGateway', () => {
             externalId: '123456',
             externalReference: '1',
             status: 'REFUNDED',
+            amount: 159.8,
+            currency: 'BRL',
         });
     });
 
@@ -228,6 +252,8 @@ describe('MercadoPagoGateway', () => {
             id: 123456,
             external_reference: '1',
             status: 'in_process',
+            transaction_amount: 159.8,
+            currency_id: 'BRL',
         });
 
         const gateway =
@@ -242,6 +268,8 @@ describe('MercadoPagoGateway', () => {
             externalId: '123456',
             externalReference: '1',
             status: 'PENDING',
+            amount: 159.8,
+            currency: 'BRL',
         });
     });
 });

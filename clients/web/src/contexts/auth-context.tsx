@@ -64,7 +64,7 @@ export function AuthProvider({
   // do cookie HttpOnly.
   useEffect(() => {
 
-    // FAZER COMMIT
+    // DEU CERTO
 
     async function restoreSession() {
       try {

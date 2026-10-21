@@ -13,10 +13,25 @@ import { cartRoutes } from './routes/cart-routes.js';
 import { paymentRoutes } from './routes/payment-routes.js';
 import { paymentWebhookRoutes } from './routes/payment-webhook-routes.js';
 
+console.log('[APP ENTRYPOINT] Arquivo principal do Express carregado');
+
 // Cria a aplicação Express com tipagem explícita.
 // Isso evita problemas de inferência de tipos
 // com as dependências internas do Express.
 export const app: Express = express();
+
+app.use((request, _response, next) => {
+  if (request.path === '/cart') {
+    console.log('[CORS DEBUG]', {
+      method: request.method,
+      origin: request.headers.origin,
+      requestedMethod:
+        request.headers['access-control-request-method'],
+    });
+  }
+
+  next();
+});
 
 // Permite que o frontend acesse a API
 // e envie cookies utilizados na autenticação.
@@ -36,6 +51,28 @@ app.use(
     credentials: true,
   }),
 );
+
+app.use((request, response, next) => {
+  if (request.path === '/cart') {
+    console.log('[CORS RESPONSE MIDDLEWARE]', request.method, request.path);
+
+    response.on('finish', () => {
+      console.log('[CORS RESPONSE]', {
+        method: request.method,
+        origin: request.headers.origin,
+        status: response.statusCode,
+        allowOrigin: response.getHeader('access-control-allow-origin'),
+        allowCredentials: response.getHeader(
+          'access-control-allow-credentials',
+        ),
+        allowMethods: response.getHeader('access-control-allow-methods'),
+        allowHeaders: response.getHeader('access-control-allow-headers'),
+      });
+    });
+  }
+
+  next();
+});
 
 // Permite que a API receba dados JSON
 // no corpo das requisições.

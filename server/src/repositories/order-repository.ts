@@ -140,14 +140,17 @@ export async function findOrderByIdAndUserId(
 }
 
 // Busca um pedido pelo seu identificador.
-export async function findOrderById(orderId: number) {
-  return prisma.order.findUnique({
-    where: {
-      id: orderId,
-    },
-    include: {
-      items: true,
-    },
+export async function findOrderById(
+  orderId: number,
+  transaction?: Prisma.TransactionClient,
+) {
+  // Usa a transação recebida quando existir;
+  // caso contrário, utiliza a conexão padrão do Prisma.
+  const transactionClient = transaction ?? prisma;
+
+  return transactionClient.order.findUnique({
+    where: { id: orderId },
+    include: { items: true },
   });
 }
 

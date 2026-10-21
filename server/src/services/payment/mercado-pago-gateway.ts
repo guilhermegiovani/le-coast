@@ -26,15 +26,21 @@ export class MercadoPagoGateway
         const successUrl = process.env.MERCADO_PAGO_SUCCESS_URL;
         const pendingUrl = process.env.MERCADO_PAGO_PENDING_URL;
         const failureUrl = process.env.MERCADO_PAGO_FAILURE_URL;
+        const notificationUrl = process.env.MERCADO_PAGO_NOTIFICATION_URL;
 
-        if (!successUrl || !pendingUrl || !failureUrl) {
+        if (!successUrl || !pendingUrl || !failureUrl || !notificationUrl) {
             throw new Error('URLs de retorno do Mercado Pago não configuradas.');
         }
 
         const preference =
             await this.preference.create({
                 body: {
-                    back_urls: { success: successUrl, pending: pendingUrl, failure: failureUrl },
+                    notification_url: notificationUrl,
+                    back_urls: {
+                        success: successUrl,
+                        pending: pendingUrl,
+                        failure: failureUrl
+                    },
                     auto_return: 'approved',
                     external_reference: String(data.orderId),
                     items: [
@@ -69,13 +75,15 @@ export class MercadoPagoGateway
     ): Promise<PaymentResult> {
         const payment = await this.payment.get({ id: externalId });
 
+
         return {
             externalId: String(payment.id),
             externalReference: payment.external_reference ?? '',
-            status: this.mapPaymentStatus(
-                payment.status,
-            ),
+            status: this.mapPaymentStatus(payment.status),
+            amount: Number(payment.transaction_amount),
+            currency: payment.currency_id ?? '',
         };
+
     }
 
     private mapPaymentStatus(

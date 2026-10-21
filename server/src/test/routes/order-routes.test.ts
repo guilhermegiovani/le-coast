@@ -803,7 +803,7 @@ describe('POST /webhooks/mercado-pago', () => {
       updatedAt: new Date(),
     });
 
-    const response = await await request(app)
+    const response = await request(app)
       .post('/webhooks/mercado-pago')
       .query({
         'data.id': '987654',

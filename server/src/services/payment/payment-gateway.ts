@@ -14,11 +14,15 @@ export type PaymentStatus =
     | 'FAILED'
     | 'REFUNDED';
 
+
 export type PaymentResult = {
     externalId: string;
     externalReference: string;
     status: PaymentStatus;
+    amount: number;
+    currency: string;
 };
+
 
 export interface PaymentGateway {
     createPayment(

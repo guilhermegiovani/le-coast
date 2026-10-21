@@ -46,9 +46,13 @@ export async function login(
   // O refresh token fica em cookie HttpOnly para não ficar
   // acessível diretamente ao JavaScript do navegador.
   response.cookie('refreshToken', refreshToken, {
+    // httpOnly: true,
+    // sameSite: 'lax',
+    // secure: process.env.NODE_ENV === 'production',
+
     httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none',
+    secure: true,
     maxAge:
       authConfig.refreshToken.expiresInDays *
       24 *
@@ -102,9 +106,13 @@ export async function refresh(
     'refreshToken',
     result.refreshToken,
     {
+      // httpOnly: true,
+      // sameSite: 'lax',
+      // secure: process.env.NODE_ENV === 'production',
+
       httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
+      secure: true,
       maxAge:
         authConfig.refreshToken.expiresInDays *
         24 *
@@ -139,9 +147,14 @@ export async function logout(
   // As opções precisam ser compatíveis com as usadas na criação
   // do cookie para garantir que ele seja removido corretamente.
   response.clearCookie('refreshToken', {
+    // httpOnly: true,
+    // sameSite: 'lax',
+    // secure: process.env.NODE_ENV === 'production',
+
     httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none',
+    secure: true,
+
   });
 
   return response.status(204).send();

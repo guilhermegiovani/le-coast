@@ -289,10 +289,13 @@ const ORDER_STATUS_TRANSITIONS: Record<
 export async function updateOrderStatus(
     orderId: number,
     data: UpdateOrderStatusInput,
+    transaction?: Prisma.TransactionClient,
 ) {
     const input = updateOrderStatusSchema.parse(data);
 
-    const order = await findOrderById(orderId);
+    const order = transaction
+        ? await findOrderById(orderId, transaction)
+        : await findOrderById(orderId);
 
     if (!order) {
         throw new AppError('Pedido não encontrado.', 404);
@@ -312,6 +315,22 @@ export async function updateOrderStatus(
     }
 
     if (order.status === 'PENDING' && input.status === 'CANCELLED') {
+        if (transaction) {
+            for (const item of order.items) {
+                await incrementProductVariantStockRepository(
+                    item.variantId,
+                    item.quantity,
+                    transaction,
+                );
+            }
+
+            return updateOrderStatusRepository(
+                orderId,
+                'CANCELLED',
+                transaction,
+            );
+        }
+
         return prisma.$transaction(async (transactionClient) => {
             for (const item of order.items) {
                 await incrementProductVariantStockRepository(
@@ -329,5 +348,7 @@ export async function updateOrderStatus(
         });
     }
 
-    return updateOrderStatusRepository(orderId, input.status);
+    return transaction
+        ? updateOrderStatusRepository(orderId, input.status, transaction)
+        : updateOrderStatusRepository(orderId, input.status);
 }

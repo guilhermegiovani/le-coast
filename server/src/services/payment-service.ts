@@ -1,10 +1,15 @@
+
+import type { Prisma } from '../generated/prisma/client.js';
+import { prisma } from '../config/prisma.js';
 import { PaymentStatus } from '../generated/prisma/client.js';
 import { AppError } from '../errors/app-error.js';
 import { findOrderById } from '../repositories/order-repository.js';
-import { updateOrderPaymentDetailsRepository, updateOrderPaymentRepository } from '../repositories/payment-repository.js';
-import type {
-  PaymentGateway,
-} from './payment/payment-gateway.js';
+import {
+  updateOrderPaymentDetailsRepository,
+  updateOrderPaymentRepository,
+} from '../repositories/payment-repository.js';
+import { updateOrderStatus } from './order-service.js';
+import type { PaymentGateway } from './payment/payment-gateway.js';
 
 /**
  * Define quais mudanças de estado são permitidas para um pagamento.
@@ -26,27 +31,33 @@ const PAYMENT_STATUS_TRANSITIONS: Record<
 /**
  * Atualiza o estado interno do pagamento de um pedido.
  *
- * Esta função deverá ser chamada futuramente pela integração
- * confiável com o gateway, e não diretamente pelo cliente.
+ * Aceita uma transação opcional para que a atualização do pagamento
+ * possa participar de uma transação maior, coordenada pelo serviço.
  */
 export async function updatePaymentStatus(
   orderId: number,
   newStatus: PaymentStatus,
+  transaction?: Prisma.TransactionClient,
 ) {
-  const order = await findOrderById(orderId);
+  // Usa a transação existente quando fornecida.
+  // Sem transação, mantém o comportamento anterior.
+  const order = transaction
+    ? await findOrderById(orderId, transaction)
+    : await findOrderById(orderId);
 
   if (!order) {
     throw new AppError('Pedido não encontrado.', 404);
   }
 
+  // Uma notificação repetida com o mesmo status não precisa atualizar
+  // novamente o pagamento.
   if (order.paymentStatus === newStatus) {
     return order;
   }
 
   const allowedTransitions = PAYMENT_STATUS_TRANSITIONS[order.paymentStatus];
 
-  // Impede mudanças de estado que não fazem sentido no
-  // ciclo de vida do pagamento.
+  // Impede mudanças de estado que não são permitidas.
   if (!allowedTransitions.includes(newStatus)) {
     throw new AppError(
       'Transição de status de pagamento inválida.',
@@ -54,10 +65,14 @@ export async function updatePaymentStatus(
     );
   }
 
-  return updateOrderPaymentRepository(
-    orderId,
-    newStatus,
-  );
+  // Mantém a atualização dentro da transação, quando existente.
+  return transaction
+    ? updateOrderPaymentRepository(
+      orderId,
+      newStatus,
+      transaction,
+    )
+    : updateOrderPaymentRepository(orderId, newStatus);
 }
 
 /**
@@ -71,15 +86,10 @@ export async function createPaymentForOrder(
   paymentGateway: PaymentGateway,
   gatewayName: string,
 ) {
-  const order = await findOrderById(
-    orderId,
-  );
+  const order = await findOrderById(orderId);
 
   if (!order) {
-    throw new AppError(
-      'Pedido não encontrado.',
-      404,
-    );
+    throw new AppError('Pedido não encontrado.', 404);
   }
 
   if (
@@ -92,11 +102,10 @@ export async function createPaymentForOrder(
     );
   }
 
-  const payment =
-    await paymentGateway.createPayment({
-      orderId: order.id,
-      amount: Number(order.totalAmount),
-    });
+  const payment = await paymentGateway.createPayment({
+    orderId: order.id,
+    amount: Number(order.totalAmount),
+  });
 
   await updateOrderPaymentDetailsRepository(
     order.id,
@@ -111,38 +120,97 @@ export async function createPaymentForOrder(
  * Processa o resultado de um pagamento retornado pelo gateway.
  *
  * A referência externa identifica o pedido e o status retornado
- * pelo gateway passa pela mesma validação de transição já usada
- * pelo fluxo interno de pagamentos.
+ * pelo gateway passa pela validação de transição do pagamento.
+ *
+ * Quando o pagamento é aprovado, um pedido ainda PENDING avança
+ * automaticamente para PROCESSING através do service de pedidos,
+ * que preserva as regras de transição e a validação do pagamento.
  */
 export async function processPaymentWebhook(
   externalId: string,
   paymentGateway: PaymentGateway,
 ) {
-
+  // Consulta o gateway antes da transação para não manter
+  // uma transação de banco aberta durante uma chamada de rede.
   const payment = await paymentGateway.getPayment(externalId);
+
+  if (!externalId || payment.externalId !== externalId) {
+    throw new AppError(
+      'Identificador do pagamento inválido.',
+      400,
+    );
+  }
 
   const orderId = Number(payment.externalReference);
 
-  if (
-    !Number.isInteger(orderId) ||
-    orderId <= 0
-  ) {
+  if (!Number.isInteger(orderId) || orderId <= 0) {
     throw new AppError(
       'Referência externa do pagamento inválida.',
       400,
     );
   }
 
-  const order = await updatePaymentStatus(
-    orderId,
-    payment.status,
-  );
+  // Valida os dados antes de iniciar as alterações no banco.
+  const order = await findOrderById(orderId);
 
-  await updateOrderPaymentDetailsRepository(
-    orderId,
-    'MERCADO_PAGO',
-    payment.externalId,
-  );
+  if (!order) {
+    throw new AppError('Pedido não encontrado.', 404);
+  }
 
-  return order;
+  if (payment.currency !== 'BRL') {
+    throw new AppError('Moeda do pagamento inválida.', 400);
+  }
+
+  if (
+    !Number.isFinite(payment.amount) ||
+    payment.amount <= 0 ||
+    Math.round(payment.amount * 100) !==
+    Math.round(Number(order.totalAmount) * 100)
+  ) {
+    throw new AppError(
+      'Valor do pagamento não corresponde ao pedido.',
+      400,
+    );
+  }
+
+  // Mantém as alterações locais na mesma transação.
+  return prisma.$transaction(async (transaction) => {
+    await updatePaymentStatus(
+      orderId,
+      payment.status,
+      transaction,
+    );
+
+    await updateOrderPaymentDetailsRepository(
+      orderId,
+      'MERCADO_PAGO',
+      payment.externalId,
+      transaction,
+    );
+
+    // Consulta novamente dentro da transação para avaliar
+    // o estado atual do pedido antes da transição.
+    const currentOrder = await findOrderById(
+      orderId,
+      transaction,
+    );
+
+    if (!currentOrder) {
+      throw new AppError('Pedido não encontrado.', 404);
+    }
+
+    if (
+      payment.status === 'PAID' &&
+      currentOrder.status === 'PENDING'
+    ) {
+      return updateOrderStatus(
+        orderId,
+        { status: 'PROCESSING' },
+        transaction,
+      );
+    }
+
+    return currentOrder;
+  });
 }
+
