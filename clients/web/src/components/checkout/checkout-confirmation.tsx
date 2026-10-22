@@ -506,6 +506,7 @@ export function CheckoutConfirmation() {
                         <Button
                             type="button"
                             variant="primary"
+                            className="gap-2"
                             onClick={() =>
                                 router.push(`/account/orders/${order.id}`)
                             }
@@ -517,6 +518,7 @@ export function CheckoutConfirmation() {
                         <Button
                             type="button"
                             variant="outline"
+                            className="gap-2"
                             onClick={() => router.push('/')}
                         >
                             <ShoppingBag size={18} />
