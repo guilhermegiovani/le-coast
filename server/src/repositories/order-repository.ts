@@ -171,3 +171,34 @@ export async function updateOrderStatusRepository(
     },
   });
 }
+
+/**
+ * Retorna os indicadores gerais de pedidos para o dashboard.
+ *
+ * As agregações são executadas no banco, evitando carregar
+ * todos os pedidos para realizar os cálculos no backend.
+ */
+export async function getAdminOrderMetricsRepository() {
+  const [totalOrders, confirmedSales] = await Promise.all([
+    prisma.order.count(),
+
+    prisma.order.aggregate({
+      where: {
+        paymentStatus: 'PAID',
+        status: {
+          not: 'CANCELLED',
+        },
+      },
+      _sum: {
+        totalAmount: true,
+      },
+    }),
+  ]);
+
+  return {
+    totalOrders,
+    confirmedSales: Number(
+      confirmedSales._sum.totalAmount ?? 0,
+    ),
+  };
+}

@@ -12,6 +12,7 @@ import { productRoutes } from './routes/product-routes.js';
 import { cartRoutes } from './routes/cart-routes.js';
 import { paymentRoutes } from './routes/payment-routes.js';
 import { paymentWebhookRoutes } from './routes/payment-webhook-routes.js';
+import { adminDashboardRoutes } from './routes/admin-dashboard-routes.js';
 
 console.log('[APP ENTRYPOINT] Arquivo principal do Express carregado');
 
@@ -96,6 +97,8 @@ app.use('/cart', cartRoutes);
 app.use('/', paymentRoutes);
 
 app.use('/webhooks', paymentWebhookRoutes);
+
+app.use('/admin/dashboard', adminDashboardRoutes);
 
 // O middleware global de erros deve ser registrado
 // depois de todas as rotas.

@@ -43,7 +43,7 @@ Preparar a estrutura inicial do monorepo, configurar os projetos e estabelecer o
 - [x] BK004 - Configurar PostgreSQL
 - [ ] BK005 - Configurar Docker
 - [x] BK006 - Configurar ESLint
-- [ ] BK007 - Configurar Prettier
+- [x] BK007 - Configurar Prettier
 - [ ] BK008 - Configurar Husky
 - [ ] BK009 - Configurar GitHub Actions
 - [x] BK010 - Criar documentação de instruções para IA
@@ -152,10 +152,10 @@ Implementar autenticação e gerenciamento básico de contas de usuários.
 - [x] BK037 - Implementar renovação ou validação de sessão
 - [x] BK038 - Implementar logout
 - [x] BK039 - Implementar recuperação de senha
-- [ ] BK040 - Criar tela de Login
-- [ ] BK041 - Criar tela de Cadastro
-- [ ] BK042 - Criar tela de recuperação de senha
-- [ ] BK043 - Proteger rotas privadas
+- [x] BK040 - Criar tela de Login
+- [x] BK041 - Criar tela de Cadastro
+- [x] BK042 - Criar tela de recuperação de senha
+- [~] BK043 - Proteger rotas privadas
 - [~] BK044 - Criar testes do fluxo de autenticação
 - [~] BK045 - Validar segurança básica da autenticação
 
@@ -187,11 +187,11 @@ Disponibilizar o catálogo de produtos para navegação, pesquisa e consulta.
 ### Tarefas
 
 - [ ] BK046 - Criar tabela de categorias
-- [ ] BK047 - Criar tabela de produtos
+- [x] BK047 - Criar tabela de produtos
 - [ ] BK048 - Criar tabela de imagens dos produtos
 - [~] BK049 - Criar variações de produto por tamanho e cor
-- [ ] BK050 - Criar CRUD de categorias
-- [ ] BK051 - Criar CRUD de produtos
+- [x] BK050 - Criar CRUD de categorias
+- [x] BK051 - Criar CRUD de produtos
 - [x] BK052 - Criar listagem pública de produtos
 - [ ] BK053 - Implementar pesquisa
 - [ ] BK054 - Implementar filtros
@@ -277,7 +277,7 @@ Permitir que o cliente finalize uma compra e acompanhe seus pedidos.
 - [x] BK077 - Implementar cadastro e seleção de endereço
 - [x] BK078 - Implementar cálculo de frete
 - [x] BK079 - Integrar gateway de pagamento
-- [ ] BK080 - Criar pedido após confirmação do pagamento
+- [x] BK080 - Criar pedido após confirmação do pagamento
 - [x] BK081 - Atualizar estoque após compra
 - [x] BK082 - Criar confirmação do pedido
 - [x] BK083 - Criar histórico de pedidos
@@ -312,9 +312,9 @@ Permitir que administradores gerenciem produtos, estoque, clientes e pedidos.
 
 ### Tarefas
 
-- [ ] BK087 - Implementar perfil e autorização de administrador
-- [ ] BK088 - Criar layout administrativo
-- [ ] BK089 - Criar dashboard administrativo
+- [x] BK087 - Implementar perfil e autorização de administrador
+- [x] BK088 - Criar layout administrativo
+- [x] BK089 - Criar dashboard administrativo
 - [ ] BK090 - Criar gerenciamento de produtos
 - [ ] BK091 - Criar gerenciamento de categorias
 - [ ] BK092 - Criar gerenciamento de estoque

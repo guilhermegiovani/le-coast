@@ -214,3 +214,41 @@ export async function incrementProductVariantStockRepository(
     },
   });
 }
+
+/**
+ * Retorna os indicadores de estoque para o dashboard administrativo.
+ *
+ * Considera somente variantes ativas de produtos ativos,
+ * evitando contar itens que não estão disponíveis no catálogo.
+ */
+export async function getAdminStockMetricsRepository() {
+  const [lowStockVariants, outOfStockVariants] = await Promise.all([
+    prisma.productVariant.count({
+      where: {
+        isActive: true,
+        product: {
+          isActive: true,
+        },
+        stock: {
+          gt: 0,
+          lte: 5,
+        },
+      },
+    }),
+
+    prisma.productVariant.count({
+      where: {
+        isActive: true,
+        product: {
+          isActive: true,
+        },
+        stock: 0,
+      },
+    }),
+  ]);
+
+  return {
+    lowStockVariants,
+    outOfStockVariants,
+  };
+}
